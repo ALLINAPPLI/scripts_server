@@ -2,55 +2,52 @@
 
 set -e
 
-echo "🛠 Installation de wp-cli, cv, et drush pour tous les utilisateurs..."
-
 # Vérification que le script est lancé en tant que root
 if [ "$(id -u)" -ne 0 ]; then
-  echo "❌ Ce script doit être exécuté en tant que root (sudo)."
-  exit 1
+    echo "❌ Ce script doit être exécuté en tant que root (sudo)."
+    exit 1
 fi
 
-# -----------------------------
-# 1. Installer wp-cli
-# -----------------------------
-echo "➡️ Installation de wp-cli..."
-curl -s -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-chmod +x wp-cli.phar
-mv wp-cli.phar /usr/local/bin/wp
-echo "✅ wp installé dans /usr/local/bin/wp"
+test -e /etc/my_common || {
+    mkdir /etc/my_common && chmod 755 /etc/my_common
+}
 
-# -----------------------------
-# 2. Installer cv (CiviCRM CLI)
-# -----------------------------
-echo "➡️ Installation de cv (CiviCRM CLI)..."
-curl -Ls https://download.civicrm.org/cv/cv.phar -o /usr/local/bin/cv
-chmod +x /usr/local/bin/cv
-echo "✅ cv installé dans /usr/local/bin/cv"
+test -e /etc/my_common/officialbin || {
+    mkdir /etc/my_common/officialbin && chmod 755 /etc/my_common/officialbin
+}
 
-# -----------------------------
-# 3. Installer Drush globalement
-# -----------------------------
-echo "➡️ Installation de Drush via Composer dans /opt/drush..."
-apt update
-apt install -y php-cli php-mbstring unzip curl git composer
+path_bin=/etc/my_common/officialbin
 
-mkdir -p /opt/drush
-cd /opt/drush
-composer create-project drush/drush .
+if ! which php > /dev/null 2>&1 ; then
+    rm -f $path_bin/php > /dev/null 2>&1
+    php_bin=$(ls /opt/plesk/php | sort -r | head -n 1)
+    echo bin : $php_bin
+    ln -s /opt/plesk/php/$php_bin/bin/php $path_bin/php
+fi
 
-# Lien symbolique global
-ln -sf /opt/drush/drush /usr/local/bin/drush
-echo "✅ drush installé dans /usr/local/bin/drush"
+if [ ! -e "$path_bin/cv" ]; then
+    echo "➡️ Installation de cv..."
+    sudo curl -LsS https://download.civicrm.org/cv/cv.phar -o $path_bin/cv
+    chmod +x $path_bin/cv
+    echo "✅ cv installé dans ${path_bin}."
+fi
 
-# -----------------------------
-# Vérification finale
-# -----------------------------
-echo "📦 Vérification des versions installées :"
-echo "----------------------------------------"
-wp --version
-cv --version
-drush --version
-echo "----------------------------------------"
+if [ ! -e "$path_bin/wp" ]; then
+    echo "➡️ Installation de wp-cli..."
+    curl -s -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
+    mv wp-cli.phar $path_bin/wp
+    chmod +x $path_bin/wp
+    echo "✅ wp-cli installé dans $path_bin."
+fi
 
-echo "✅ Tous les outils ont été installés globalement avec succès."
-
+if [ ! -e "$path_bin/drush" ]; then
+    if command -v composer &> /dev/null; then
+        echo "➡️ Installation de drush via Composer..."
+        composer global require drush/drush
+        mv $(composer global config home)/vendor/bin/drush /etc/my_common/officialbin/
+        chmod +x /etc/my_common/officialbin/drush
+        echo "✅ drush installé dans /etc/my_common/officialbin."
+    else
+        echo "🚨 Composer n'est pas installé. Impossible d'installer drush."
+    fi
+fi
