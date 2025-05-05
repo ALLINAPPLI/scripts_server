@@ -1,16 +1,17 @@
 #!/bin/bash
+echo "sources"
 
 for ele in $(ls /etc/my_common/sources); do
-    if [ -r "$ele" ]; then
+    fullpath="/etc/my_common/sources/$ele"
+    if [ -r "$fullpath" ]; then
         if [ "$PS1" ]; then
-            echo "sourcing $ele"
-            . "/etc/my_common/sources/$ele"
+            . "$fullpath"
         else
-            . "/etc/my_common/sources/$ele" >/dev/null
+            . "$fullpath" >/dev/null
         fi
     fi
 done
 
 export PATH="$PATH:/etc/my_common/bin"
-export CUSTOM_INCLUDES="/etc/my_common/includes"
+export CUSTOM_DIR="/etc/my_common"
 export racine="/var/www/vhosts"
