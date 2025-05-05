@@ -1,0 +1,56 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Clonage base de données
+##
+#############################################################
+
+cd ..
+
+## Récupération de la liste des domaines et des variables de connexion
+######################################################################
+
+echo -e '\e[93m=============================================\033[0m'
+echo "Liste des domaines disponibles : "
+echo " "
+listSite=$(plesk bin site --list);
+echo ${listSite[@]}
+echo "Quelle est l'instance source ?"
+echo " "
+read folder_clone
+echo -e '\e[93m=============================================\033[0m'
+echo " "
+echo "Quelle est l'instance cible ?"
+echo " "
+read folder_destination
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de la base de données de l'instance cible ?"
+read mysql_destination_database
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de l'utilisateur de la base de données de l'instance cible ?"
+read mysql_destination_user
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "MDP de l'utilisateur de la base de données de l'instance cible ?"
+read mysql_destination_mdp
+echo -e '\e[93m=============================================\033[0m'
+
+cd $folder_clone/httpdocs
+sudo mysqldump --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database > $folder_destination.sql
+sed 's/\sDEFINER=`[^`]*`@`[^`]*`//g' -i $folder_destination.sql
+sed -i "s/https:\/\/`echo $folder_clone`/https:\/\/`echo $folder_destination`/g" $folder_destination.sql
+sed -i "s/http:\/\/`echo $folder_clone`/https:\/\/`echo $folder_destination`/g" $folder_destination.sql
+sed -i "s/https:\/\/www.`echo $folder_clone`/https:\/\/`echo $folder_destination`/g" $folder_destination.sql
+sed -i "s/http:\/\/www.`echo $folder_clone`/https:\/\/`echo $folder_destination`/g" $folder_destination.sql
+sed -i "s/www.`echo $folder_clone`/`echo $folder_destination`/g" $folder_destination.sql
+sed -i "s/\/vhosts\/`echo $folder_clone`/\/vhosts\/`echo $folder_destination`/g" $folder_destination.sql
+sudo mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $folder_destination.sql
+rm -rf $folder_destination.sql
+echo -e '\e[93m========================================\033[0m'
+echo "La correction des URLs a été effectuée"
+echo -e '\e[93m========================================\033[0m'

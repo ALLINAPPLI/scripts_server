@@ -1,0 +1,30 @@
+#/bin/bash
+
+upgrade_extension_of_site()
+{
+    local site=$1
+    local ext_folder=""
+    local cms_instance=""
+
+    if [ -z $site ]; then return 0; fi
+    cd $racine/$site/httpdocs 2> /dev/null || { echo fail; return 1; }
+    local httpdocs="$racine/$site/httpdocs"
+
+    test -e $httpdocs/sites/default/settings.php && cms_instance="drupal" && ext_folder="$httpdocs/sites/default/files/civicrm/ext"
+    test -e $httpdocs/private/civicrm.settings.php && cms_instance="standalone" && ext_folder="$httpdocs/ext"
+    test -e $httpdocs/wp-config.php && cms_instance="wordpress" && ext_folder="$httpdocs/wp-content/uploads/civicrm/ext/"
+
+    cd $ext_folder
+    elems=$(ls)
+    for ele in $elems; do 
+        cd $ext_folder/$ele
+        echo -e "${YELLOW}===============================${NC}"
+        echo -e "${RED}[ INFO ]${NC} s'occupe actuellement de ${PURPLE}${ele}${NC}"
+        yes | civix upgrade --yes
+        pwd
+        echo -e "${YELLOW}===============================${NC}"
+    done
+}
+
+s=$(pwd | sed -E "s|^${racine}/([^/]+)/httpdocs|\1|")
+upgrade_extension_of_site $s

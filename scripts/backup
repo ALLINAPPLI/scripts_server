@@ -1,0 +1,71 @@
+#!/bin/bash
+##
+## Développé par Ilias Assadki
+##
+#############################################################
+##
+##  Sauvegarde instance (BDD et fichiers)
+##
+#############################################################
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+mysql_source_database="";
+mysql_source_user="";
+mysql_source_mdp="";
+
+source "/home/scripts/clone_functions_utils.sh";
+source "/home/scripts/functions.sh";
+cd $vhosts
+ 
+## Choix de l'instance source 
+echo -e '\e[93m=============================================\033[0m'
+echo "Choisissez l'instance que vous souhaitez sauvegarder ?" && echo " "
+ 
+# Récupération de la liste des domaines 
+listSite=($(plesk bin site --list))
+select folder_source in "${listSite[@]}"; do break; done
+
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "L'instance choisie est : ${GREEN}$folder_source${NC}"
+sleep 0.6
+
+result="$(get_instance_cms $folder_source)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+
+
+echo -e '\e[93m================================================\033[0m' 
+
+#***  Debut de la sauvegarde de l'instance  ***#
+cd $vhosts/$folder_source
+
+# Obtenir la date et l'heure actuelles
+DATE=$(date +"%d_%m_%Y__%H_%M")
+
+# Créer le répertoire avec le format de nom souhaité
+mkdir -p "save_$DATE" && cd "save_$DATE"
+
+display_db_size $mysql_source_database # Affichage taille  BDD
+get_bdd_from_instance $mysql_source_database $mysql_source_user $mysql_source_mdp --skip-triggers
+
+echo " "
+
+#*** Sauvegarde Fichiers
+cd $vhosts/$folder_source
+
+echo "> Archivage de httpdocs de $folder_source"
+tar -czf - httpdocs | pv -s $(du -sb httpdocs | awk '{print $1}') > "$folder_source.tar.gz" 
+mv $folder_source.tar.gz $vhosts/$folder_source/save_$DATE 
+
+echo " "
+
+echo "> Archivage du dossier de sauvegarde"
+tar -czf - save_$DATE | pv -s $(du -sb save_$DATE | awk '{print $1}') > "save_$DATE.tar.gz"
+
+echo " "
+
+rm -rf save_$DATE
+
+cd $vhosts/$folder_source
+
+echo " " && echo -e ">> Sauvegarde de ${GREEN}$folder_source${NC} effectuée" ; echo " " ; cd $vhosts

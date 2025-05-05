@@ -1,0 +1,132 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin et Fawzy Elsam
+##
+################################################
+##
+##  Clonage site avec sous-domaines
+##
+################################################
+
+cd ..
+source clonage/functions.sh
+
+## Récupération de la liste des domaines 
+########################################
+
+echo -e '\e[93m=============================================\033[0m'
+echo "Liste des domaines disponibles : "
+echo " "
+listSite=$(plesk bin site --list);
+echo ${listSite[@]}
+echo " "
+echo "Quelle est l'instance source ?"
+echo " "
+read folder_clone
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de la base de données de l'instance source ?"
+read mysql_clone_database
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de l'utilisateur de l'instance source ?"
+read mysql_clone_user
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "MDP de l'utilisateur de l'instance source ?"
+read mysql_clone_mdp
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo " "
+echo "Liste des domaines disponibles : "
+echo " "
+listSite=$(plesk bin site --list);
+echo ${listSite[@]}
+echo " "
+echo "Quelle est l'instance cible ?"
+echo " "
+read folder_destination
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de la base de données de l'instance cible ?"
+read mysql_destination_database
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de l'utilisateur de l'instance cible ?"
+read mysql_destination_user
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "MDP de l'utilisateur de l'instance cible ?"
+read mysql_destination_mdp
+echo -e '\e[93m=============================================\033[0m'
+
+
+cd $folder_clone/httpdocs
+sudo mysqldump --user=$mysql_clone_user --password=$mysql_clone_mdp $mysql_clone_database > $folder_clone.sql
+sed 's/\sDEFINER=`[^`]*`@`[^`]*`//g' -i $folder_clone.sql
+cd ..
+zip -r $folder_clone.zip httpdocs/
+
+cd httpdocs
+rm -rf $folder_clone.sql
+cd ../..
+cd $folder_destination/httpdocs
+
+[[ "$(ls -A /)" ]] && deleteContente || mouveContent
+
+mv $folder_clone/$folder_clone.zip $folder_destination/httpdocs
+
+cd $folder_destination/httpdocs
+unzip $folder_clone.zip
+
+cd ..
+mv httpdocs/httpdocs/* httpdocs
+cd httpdocs
+
+sudo mysql -u $mysql_destination_user -p$mysql_destination_mdp  -D $mysql_destination_database < $folder_clone.sql
+[[ ! -d "index.html" ]] && rm -rf index.html
+rm -rf $folder_clone.zip
+rm -rf $folder_clone.sql
+rm -rf httpdocs
+
+## Modification des URLs dans la base de donnnées de domain.com vers alias.domain.com
+##
+#####################################################################################
+
+echo -e '\e[93m=====================================\033[0m'
+touch db.sql
+sudo mysqldump --user=$mysql_destination_user --password=$mysql_clone_mdp $mysql_destination_database > db.sql
+sed -i "s/`echo $folder_clone`/`echo $folder_destination`/g" db.sql
+sed -i "s/www.`echo $folder_destination`/`echo $folder_destination`/g" db.sql	
+sudo mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < db.sql
+rm -rf db.sql
+echo "La modification des URLs a été effectuée"
+echo -e '\e[93m=====================================\033[0m'
+
+## update wp-config
+## À vérifier
+sed -i "s/`echo $mysql_clone_database`/`echo $mysql_destination_database`/" wp-config.php
+sed -i "s/\/vhosts\/`echo $folder_clone`/\/vhosts\/`echo $folder_destination`/" wp-config.php
+
+## update .user.ini // uniquement si Wordfence est présent
+## Ajouter vérification conditionnelle si .user.ini est présent alors... sinon...
+[[ ! -d ".user.ini" ]] && sed -i "s/`echo $folder_clone`/`echo $folder_destination`/" .user.ini
+
+## update civicrm.setting.php // concerne seulement Par le Monde
+[[ ! -d "civicrm.settings.php" ]] && sed -i "s/\/vhosts\/`echo $folder_clone`/\/vhosts\/`echo $folder_destination`/" civicrm.settings.php
+[[ ! -d "civicrm.settings.php" ]] && sed -i "s/`echo $mysql_clone_database`/`echo $mysql_destination_database`/" civicrm.settings.php
+
+## update civicrm.setting.php dans le répertoire standard
+## Ajouter vérification conditionnelle si dossier est présent alors... sinon...
+## À vérifier si ça fonctionne vraiment
+cd wp-content/uploads/civicrm
+
+[[ ! -d "civicrm.settings.php" ]] && sed -i "s/\/vhosts\/`echo $folder_clone`/\/vhosts\/`echo $folder_destination`/" civicrm.settings.php
+[[ ! -d "civicrm.settings.php" ]] && sed -i "s/`echo $mysql_clone_database`/`echo $mysql_destination_database`/" civicrm.settings.php
+
+plesk repair fs `echo $folder_destination` -y
+
+echo -e '\e[93m============================================================\033[0m'
+echo -e '\e[1;32m Site '$folder_clone' cloné vers '$folder_destination' \032' 
+echo -e '\e[93m============================================================\033[0m'
+echo -e '\033[31m PENSER À VÉRIFIER LES FICHIER WP-CONFIG AINSI QUE LE CIVICRM.SETTINGS.PHP'

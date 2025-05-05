@@ -1,0 +1,207 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Clonage d'instances
+##
+#############################################################
+
+# remplacer le contenu de fichier
+# cp les fichier
+# les droits
+# Base de données
+
+
+###########
+# sandbox.smc-cse.fr
+# smc-cse.fr
+# parlemonde -> testbash
+# 51; 78
+
+
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+sites=$(plesk bin site --list)
+mysql_source_database="";
+mysql_source_user="";
+mysql_source_mdp="";
+cms_instance_source=""
+mysql_destination_database="";
+mysql_destination_user="";
+mysql_destination_mdp="";
+cms_instance_destination=""
+
+OPTIONS=()
+for site in $sites; do OPTIONS+=("$site" ""); done
+
+
+source "/home/scripts/clone_functions_utils.sh";
+source "/home/scripts/functions.sh";
+ 
+#################################################################
+# Récupération de la liste des domaines
+# et selection du site à cloner
+#################################################################
+echo -e "${YELLOW}=============================================${NC}";
+
+
+# Selection via whiptail
+folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_source" ]; then
+    echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
+    exit 1;
+fi
+
+## Choix de l'instance destination
+folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_destination" ]; then
+    echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
+    exit 1;
+fi
+
+echo -e "${BLUE}[ INFO ]${NC} L'instance source choisie est : ${GREEN}$folder_source${NC}";
+echo -e "${BLUE}[ INFO ]${NC} L'instance de destination choisie est : ${GREEN}$folder_destination${NC}";
+
+result_src="$(get_instance_cms $folder_source)" || exit 1
+result_dest="$(get_instance_cms $folder_destination)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result_src"
+read cms_instance_destination mysql_destination_database mysql_destination_user mysql_destination_mdp <<< "$result_dest"
+
+
+echo -e "${BLUE}[ INFO ]${NC} Recap:"
+print_clone_bdd_resume "Source" "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+print_clone_bdd_resume "Destination" "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
+
+# Point de contrôle de vérification de $folder_source == $folder_destination et autre tests
+exit_on_equal "$folder_source" "$folder_destination";
+exit_on_equal "$mysql_source_user" "$mysql_destination_user" "Les users source et destination sont égaux";
+exit_on_equal "$mysql_source_database" "$mysql_destination_database" "Les noms des db source et destination sont égaux";
+exit_on_equal "$mysql_destination_user" "$mysql_destination_database"\
+    "Le nom de la BDD source ainsi que son nom d'utilisateur sont similaires, changez les identifiants de $folder_destination depuis Plesk";
+
+
+echo -e "${YELLOW}===============================================${NC}" 
+echo -e "${BLUE}[ INFO ]${NC} Vous allez cloner ${GREEN}$folder_source${NC} vers ${GREEN}$folder_destination${NC}"    
+echo -e "${YELLOW}================================================${NC}" 
+
+# Condition pour suppression des tables de la base de données destination
+echo -e "${GREY} >> ${NC} Faut-il vider la base de données ${GREEN}$mysql_destination_database${NC} de ${GREEN}$folder_destination${NC} ? o(oui) ou n(non)"
+read reponse1
+if [ "$reponse1" = "o" ]; then
+    vidage_bdd "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
+    display_db_size $mysql_source_database
+    display_db_size $mysql_destination_database
+fi
+
+#***  Debut clonage  ***#
+## Partie source
+clone_files()
+{
+    echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
+    cd $vhosts/$folder_source
+    tar -cf "$folder_source.tar" httpdocs
+    mv $folder_source.tar $vhosts/$folder_destination
+
+    echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
+    cd $vhosts/$folder_destination
+    rm -rf httpdocs
+    tar -xf "$folder_source.tar" -C $vhosts/$folder_destination 
+    rm $folder_source.tar
+    echo -e "${GREEN}[ SUCCÈS ]${NC} Fichiers clonés !"
+}
+
+modify_value_within_files()
+{
+    echo -e "${BLUE}[ INFO ]${NC} Modification des valeurs des fichiers de configuration ..."
+    cd $vhosts/$folder_destination
+    if [ "$cms_instance_source" == "wordpress" ]; then
+        majValeurs_Wordpress;
+        majValeurs_Wordfence;
+        majValeursCivicrm_Wordpress;
+    fi
+
+    if [ "$cms_instance_source" == "drupal" ]; then
+        majValeurs_Drupal 
+        majValeursCivicrm_Drupal
+    fi
+
+    if [ "$cms_instance_source" == "standalone" ]; then
+        maj_valeur_civicrm_settings_php "$vhosts/$folder_destination/httpdocs/private/"
+    fi
+    echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers ont été remplacées"
+}
+
+clone_bdd()
+{
+    echo -e "${BLUE}[ INFO ]${NC} Début du clonage de la base de donnée"
+    tempfile="/tmp/temp_clonage-$cms_instance_destination-$folder_destination"
+    if [ ! -d "$tempfile" ]; then mkdir "$tempfile"; fi
+    cd "$tempfile"
+    get_bdd_from_instance $mysql_source_database $mysql_source_user $mysql_source_mdp --skip-triggers # Création du fichier .sql source
+    remplacementURL_BDD
+    nettoyageAdressesElectroniques
+    set_bdd_in_instance $mysql_destination_database $mysql_destination_user $mysql_destination_mdp "$mysql_source_database".sql
+    echo -e "${BLUE}[ INFO ]${NC} Suppression du dossier temp_clonage destination..." && rm -rf "$tempfile" && cd $vhosts && echo " "
+}
+maintenance_mod=""
+echo " >> Activer le mode maintenance sur le site source $folder_source ? (O/N)"
+read maintenance_mod
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    set_maintenance_mode $folder_source $cms_instance_source
+fi
+
+start=$(date +%s)
+formated_start=$(date +"%Y-%m-%d %H:%M:%S")
+echo -e "${YELLOW}================================================${NC}" ; echo " "
+echo -e "${BLUE}[ INFO ]${NC} \033[1;34m🔄 Lancement du clonage de la base de données en arrière-plan...${NC} (🕒 début : $formated_start)"
+
+
+clone_bdd & pid_to_wait=$!
+clone_files
+modify_value_within_files
+if [ ! $pid_to_wait = "" ]; then
+    echo -e "${BLUE}[ INFO ]${NC} ⏳ En attente de la fin du clonage de la BDD..."
+    wait $pid_to_wait
+fi
+
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    unset_maintenance_mode $folder_source $cms_instance_source
+    unset_maintenance_mode $folder_destination $cms_instance_source
+fi
+
+echo -e "${GREEN}[ SUCCÈS ]${NC} ✅ Clonage terminé !"
+echo -e "${YELLOW}================================================${NC}" ; echo " "
+
+
+# Correction de la propriété des fichiers 
+echo -e ">> Plesk repair..." && plesk repair fs "$folder_destination" -y
+
+# Point de contrôle de vérification ou non de l'égalité de l'utilisateur et la base de données destination
+if [ "$mysql_source_user" == "$mysql_destination_user" ] || [ "$mysql_source_database" == "$mysql_destination_database" ]; then
+    echo -e "${RED}[ ERREUR ]${NC} : Les identifiants des domaines source et destination sont similaires, veuillez restaurer $folder_source et/ou $folder_destination" ; echo " "
+    exit 0
+fi
+
+# [ $cms_instance_source == "wordpress" ] && echo -e ">> PENSER À VÉRIFIER LES FICHIERS WP-CONFIG.PHP AINSI QUE LE CIVICRM.SETTINGS.PHP" && echo " ";
+# [ $cms_instance_source == "drupal" ] && echo -e ">> PENSER À VÉRIFIER SETTINGS.PHP AINSI QUE LE CIVICRM.SETTINGS.PHP" && echo " ";
+
+# faire le rebuild triggers
+echo -e "${BLUE}[ INFO ]${NC} rebuilding the triggers"
+cd "$vhosts/$folder_destination/httpdocs"
+cv api4 System.flush triggers=1 2> /dev/null > /dev/null
+if [ $? -eq 0 ]; then
+    echo -e "${BLUE}[ INFO ]${NC} triggers rebuild"
+else
+    echo -e "${PURPLE}[ ATTENTION ]${NC} La reconstruction des triggers à échoué, peut être que cv n'est pas dans l'instance..."
+fi
+
+echo -e "${GREEN}[ SUCCÈS ]${NC} Site ${GREEN}$folder_source${NC} bien cloné vers ${GREEN}$folder_destination${NC}" ; echo " " ; 
+
+end=$(date +%s)
+format_end=$(date +"%Y-%m-%d %H:%M:%S")
+elapsed=$(echo "$end - $start" | bc)
+echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕒 Fin de l'opération : ${format_end}"
+echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕔 Durée totale de l'opération : ${elapsed} secondes"
+cd $vhosts

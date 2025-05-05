@@ -1,0 +1,58 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Vidage base de données 
+##
+#############################################################
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+mysql_source_database="";
+mysql_source_user="";
+mysql_source_mdp="";
+
+source /home/scripts/functions.sh
+source /home/scripts/clone_functions_utils.sh
+cd $vhosts
+ 
+## Choix de l'instance source 
+echo -e '\e[93m=====================================\033[0m'
+echo "De quelle instance souhaitez vous en vider la base de données ?" && echo " "
+
+# Récupération de la liste des domaines 
+listSite=($(plesk bin site --list))
+select folder_source in "${listSite[@]}"; do break; done
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "L'instance choisie est : \e[1;32m$folder_source\e[0m"
+
+result="$(get_instance_cms $folder_source)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+
+echo "Recap :"
+print_clone_bdd_resume "BDD changée" "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+
+echo -e '\e[93m=============================================\033[0m' 
+
+# Condition pour suppression des tables mysql de $folder_source
+echo "Voulez vous vider la base de données de $folder_source ? o(oui) ou n(non)"
+read reponse1
+if test "$reponse1" = "o"; then
+    maintenance_mod=""
+    echo " >> Activer le mode maintenance sur le site source $folder_source ? (O/N)"
+    read maintenance_mod
+    if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+        set_maintenance_mode $folder_source $cms_instance_source
+    fi
+    vidage_bdd "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+    if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+        unset_maintenance_mode $folder_source $cms_instance_source
+    fi
+else
+    echo "Sortie du script"
+    exit 0
+fi
+
+echo " " ; echo -e ">> Le vidage de la BDD de $folder_source a bien été effectué" ; echo " " ; cd $vhosts
