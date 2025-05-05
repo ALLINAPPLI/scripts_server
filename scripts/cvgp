@@ -1,7 +1,7 @@
 #/bin/bash
 
-source "/root/custom_cmds/includes/utils.sh"
-source "/root/custom_cmds/includes/cv_source.sh"
+source "/$CUSTOM_DIR/sources/utils.sh"
+source "/$CUSTOM_DIR/sources/cv_source.sh"
 
 ### Aliases pour git pull de l'extension de CiviCRM et activation
 ## condition drupal à gérer
