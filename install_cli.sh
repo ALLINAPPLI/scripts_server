@@ -44,8 +44,9 @@ if [ ! -e "$path_bin/drush" ]; then
     if command -v composer &> /dev/null; then
         echo "➡️ Installation de drush via Composer..."
         composer global require drush/drush
-        mv $(composer global config home)/vendor/bin/drush /etc/my_common/officialbin/
-        chmod +x /etc/my_common/officialbin/drush
+        drush_path=$(composer global config home)/vendor/bin/drush;
+        chmod +x $drush_path
+        ln -s $drush_path /etc/my_common/officialbin/drush
         echo "✅ drush installé dans /etc/my_common/officialbin."
     else
         echo "🚨 Composer n'est pas installé. Impossible d'installer drush."
