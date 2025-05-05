@@ -1,4 +1,4 @@
-source /root/custom_cmds/includes/utils.sh
+source $CUSTOM_DIR/includes/utils.sh
 
 ### Sélection d'instance et Test CMS simple
 # Fonction test qui retourne un element. Comparer cet element avec le retour de la fonction 

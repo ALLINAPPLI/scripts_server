@@ -1,4 +1,4 @@
-source /root/custom_cmds/includes/utils.sh
+source $CUSTOM_DIR/includes/utils.sh
 
 ### Aliases pour git clone de l'extension de Wordpress et activation
 wpgc() {
