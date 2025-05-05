@@ -1,0 +1,211 @@
+#/bin/bash
+
+# this function take 2 parameter, the 1st one is the tmp file where the result of cv status is
+# and the second is the civicrm version, in case it is the standalone CMS
+# it parse and get which CMS is used in the instance.
+get_CMS()
+{
+    if [[ $# != 2 ]]; then return 1; fi
+
+    local content=$(cat $1)
+    line_content=$(echo "$content" | grep "wordpress" 2> /dev/null) # here, the use of " force the command echo to keep the \n and spaces
+    if [[ $? == 0 ]]; then
+        local val_name=$(echo "$content" | grep "wordpress_name" | cut -d"'" -f2)
+        local val_version=$(echo "$content" | grep "wordpress_value" | cut -d"'" -f2)
+        echo $val_name $val_version
+        return;
+    fi
+    line_content=$(echo "$content" | grep "drupal" 2> /dev/null)
+    if [[ $? == 0 ]]; then
+        local val_name=$(echo "$content" | grep "drupal_name" | cut -d"'" -f2)
+        local val_version=$(echo "$content" | grep "drupal_value" | cut -d"'" -f2)
+        echo $val_name $val_version
+        return;
+    fi
+    line_content=$(echo "$content" | grep "standalone" 2> /dev/null)
+    if [[ $? == 0 ]]; then
+        echo "standalone" "$2"
+        return;
+    fi
+}
+
+# transforme the error status code into the message error associated
+get_error_based_on_error_code()
+{
+    if [[ $# != 1 ]]; then return 1; fi
+
+    if [[ $1 == 255 ]]; then echo "cv status failed"; return 0; fi
+    if [[ $1 == 143 ]]; then echo "time out, process killed"; return 0; fi
+    if [[ $1 == 1 ]]; then echo "domain not compatible"; return 0; fi
+    return 0
+}
+
+# compare différentes version pour y associer une couleur.
+version_compare()
+{
+    # Séparer les versions en différentes parties (majeur, mineur, etc.)
+    IFS='.' read -r -a v1_parts <<< "$1"
+    IFS='.' read -r -a v2_parts <<< "$2"
+
+    # Comparer chaque partie de la version
+    for i in "${!v1_parts[@]}"; do
+        local v1_part="${v1_parts[$i]}";
+        local v2_part="${v2_parts[$i]}";
+
+        if [ "$v1_part" -gt "$v2_part" ]; then
+            echo $GREEN;
+            return
+        elif [ "$v1_part" -lt "$v2_part" ]; then
+            if [ "$i" -eq 0 ]; then
+                echo $RED;
+            else
+                echo $YELLOW;
+            fi
+            return
+        fi
+    done
+
+    # Si aucune différence, les versions sont égales
+    echo $NC  # égales
+}
+
+# Affiche le site tout de même, utile en cas de -g
+print_site_with_no_civi()
+{
+    local site=$1
+    local prev_success=$2
+    local php_version=$3
+    local php_colors=$4
+
+    test -e /var/www/vhosts/$1/httpdocs/wp-config.php && local cms="wordpress";
+    test -e /var/www/vhosts/$1/httpdocs/sites/default/settings.php && local cms="drupal";
+    test -e /var/www/vhosts/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
+    local tmp_file="$tmp_folder/$cms-$1";
+
+    cd /var/www/vhosts/$1/httpdocs 2> /dev/null
+    if [[ $? != 0 ]]; then
+        printf "| %-44s | %-12s | %-12s | ${RED}%-12s${NC} | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "---" "$php_version" > "$tmp_file"
+        return 1;
+    fi
+    local cms_version="";
+
+    case "$cms" in
+        "wordpress")
+            local cms_version=$(wp core version --allow-root 2> /dev/null);
+            ;;
+        "drupal")
+            local cms_version=$(drush status 2> /dev/null | grep "Drupal version" | cut -d " " -f 3);
+            ;;
+        *)
+            local cms_version="---";
+            local cms="---";
+            ;;
+    esac
+
+    printf "| %-44s | %-12s | %-12s | ${RED}%-12s${NC} | ${php_colors}%-7s${NC} |\n" "$1" "$cms" "$cms_version" "---" "$php_version" > "$tmp_file"
+}
+
+get_smarty_version()
+{
+    # local var=$(cat `find -name "civicrm.settings.php"` | grep "/civicrm/civicrm/packages/" | grep -Ev '^[[:space:]]*(expr1|expr2)')
+    # echo $var
+    local version_smarty=$(
+        # cv php:eval '
+        #     if (defined("Smarty::SMARTY_VERSION")) {
+        #         echo Smarty::SMARTY_VERSION . "\n";
+        #     } elseif (method_exists("Smarty", "getVersion")) {
+        #         echo (new Smarty())->getVersion() . "\n";
+        #     } else {
+        #         echo "2\n";
+        #     }' 2> /dev/null
+        cv php:eval 'echo CRM_Core_Smarty::singleton()->getVersion();' 2> /dev/null
+        )
+    echo $version_smarty
+}
+
+# main function that is launched in parallele. Display the information about 1 domain.
+process_cv_status()
+{
+    if [[ $# < 1 ]]; then return 1; fi
+    cd $racine/$instance/httpdocs 2> /dev/null 
+    local success=$?
+
+    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
+    local php_colors=$(version_compare $php_version $(cat /root/custom_cmds/ltst-php-version))
+    local tmp_file="$tmp_folder/$1"
+
+    if [[ $success == 0 ]]; then
+        command my_timeout -t 3 cv status --out=shell 2> /dev/null > $tmp_file ; success=$?
+    fi
+    if [ $success -ne 0 ]; then
+        rm $tmp_file 2> /dev/null
+        if [ "$2" = "-g" ]; then 
+            print_site_with_no_civi $1 $success $php_version $php_colors
+        fi
+        return 0;
+    fi
+    local civi_version=$(cat $tmp_file | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1);
+    read cms cms_ver <<< $(get_CMS $tmp_file $civi_version);
+    rm "$tmp_file" 2> /dev/null;
+    local tmp_file="$tmp_folder/$cms-$1";
+    local smarty_version=$(get_smarty_version);
+    local smarty_color=$([ $smarty_version = "2" ] && echo "$RED")
+    printf "| %-44s | %-12s | %-12s | %-12s | ${php_colors}%-7s${NC} | ${smarty_color}%-7s${NC} |\n"\
+            "$1"     "$cms" "$cms_ver" "$civi_version" "$php_version"  "$smarty_version" > "$tmp_file"
+}
+
+run_multiprocess_functions()
+{
+    local process_to_wait=()
+    local list_site=$1
+    local message=$2
+    shift 2
+
+    # iterate on all the instance and launch the function "process_cv_status" in multiple process for parallele execution
+    # and faster execution.
+    for instance in $list_site; do
+        (process_cv_status $instance $@; echo -n "x") & #launch another process
+        process_to_wait+=($!) # retrieve PID to store it in the list "process_to_wait" 
+    done
+
+    echo -e "\033[1;34m${messages[$random_index]}\033[0m" >&2
+
+    # wait for all pids
+    for pid in ${process_to_wait[*]}; do
+        wait $pid
+    done
+    sleep 0.2
+}
+
+# Main function, 1er appelé, elle va 
+main()
+{
+    local list_site=$(plesk bin site --list)
+    local site_count=$(echo "$list_site" | wc -l)
+
+    local messages=(
+        "🚀  Les processus ont été lancés en arrière-plan..."
+        "📡  Tous les processus sont maintenant en cours d'exécution en arrière-plan."
+        "🛠️  Processus en arrière-plan lancés. Patience, ça bosse..."
+        "✅  Lancement des processus en arrière-plan effectué avec succès."
+    )
+    local random_index=$((RANDOM % ${#messages[@]}))
+    run_multiprocess_functions "$list_site" "${messages[$random_index]}" "$@" | pv -i 0.2 -s "$site_count" -p | tee /tmp/debug_vcv > /dev/null
+
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+    echo "| Instance                                     | CMS          | Version      | CiviCRM      | PHP     | Smarty  |"
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+    find "$tmp_folder" -type f | sort | while read -r file; do
+        if [ -s "$file" ]; then
+            cat "$file"
+        fi
+    done
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+    rm -rf "$tmp_folder"
+}
+
+my_pid=$$
+tmp_folder="/tmp/vcv_tmp_pid_${my_pid}"
+mkdir "$tmp_folder";
+main $@
+rm -rf "$tmp_folder"

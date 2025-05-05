@@ -1,0 +1,107 @@
+#/bin/bash
+
+version_compare()
+{
+    # Séparer les versions en différentes parties (majeur, mineur, etc.)
+    IFS='.' read -r -a v1_parts <<< "$1"
+    IFS='.' read -r -a v2_parts <<< "$2"
+
+    # Comparer chaque partie de la version
+    for i in "${!v1_parts[@]}"; do
+        local v1_part="${v1_parts[$i]}";
+        local v2_part="${v2_parts[$i]}";
+
+        if [ "$v1_part" -gt "$v2_part" ]; then
+            echo $GREEN;
+            return
+        elif [ "$v1_part" -lt "$v2_part" ]; then
+            if [ "$i" -eq 0 ]; then
+                echo $RED;
+            else
+                echo $YELLOW;
+            fi
+            return
+        fi
+    done
+    echo $NC  # égales
+}
+
+
+process_for_single_site()
+{
+    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
+    local php_colors=$(version_compare $php_version $(cat /root/custom_cmds/ltst-php-version))
+
+    test -e /var/www/vhosts/$1/httpdocs/wp-config.php && local cms="wordpress";
+    test -e /var/www/vhosts/$1/httpdocs/sites/default/settings.php && local cms="drupal";
+    test -e /var/www/vhosts/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
+
+    [ -d "/var/www/vhosts/$1/httpdocs" ] && cd /var/www/vhosts/$1/httpdocs || {
+        printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "$php_version" > "/tmp/vcms_tmp/no_dir-$1"
+        return 1;
+    }
+    local cms_version="";
+
+    case "$cms" in
+        "wordpress")
+            local cms_version=$(wp core version --allow-root 2> /dev/null);
+            ;;
+        "drupal")
+            local cms_version=$(drush status 2> /dev/null | grep "Drupal version" | cut -d":" -f2);
+            local cms_version=$(echo $cms_version)
+            ;;
+        "standalone")
+            ;;
+        *)
+            printf "| %-44s | ${RED}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- !cms ---" ""  "$php_version" > "/tmp/vcms_tmp/no_cms-$1"
+            return 1
+            ;;
+    esac
+
+    local civicrm=$(find "$racine/$1/httpdocs" -name "civicrm.settings.php" -print -quit | grep -q . && echo "$GREEN" )
+    local tmp_file="/tmp/vcms_tmp/$cms-$1";
+    printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | \n" "$1" "$cms" "$cms_version"  "$php_version" > "$tmp_file"
+}
+
+run_processes()
+{
+    local process_to_wait=()
+    local list_site=$1
+    local message=$2
+    shift 2
+
+    # iterate on all the instance and launch the function "process_cv_status" in multiple process for parallele execution
+    # and faster execution.
+    for instance in $list_site; do
+        (process_for_single_site $instance; echo -n "x") & #launch another process
+        process_to_wait+=($!) # retrieve PID to store it in the list "process_to_wait" 
+    done
+
+    # wait for all pids
+    for pid in ${process_to_wait[*]}; do
+        wait $pid
+    done
+    return 0
+}
+
+main()
+{
+    local list_site=$(plesk bin site --list)
+    local site_count=$(echo "$list_site" | wc -l)
+    local tmp_folder="/tmp/vcms_tmp"
+    [ -d $tmp_folder ] || mkdir "$tmp_folder";
+
+    run_processes "$list_site" "${messages[$random_index]}" | pv -i 0.2 -s "$site_count" -p | tee /tmp/debug_vcv > /dev/null
+
+    echo "+----------------------------------------------+--------------+--------------+---------+"
+    echo "| Instance                                     | CMS          | CMS Version  | PHP     |"
+    echo "+----------------------------------------------+--------------+--------------+---------+"
+
+    for instance in `ls $tmp_folder`; do
+        cat "$tmp_folder/$instance"
+    done
+    echo "+----------------------------------------------+--------------+--------------+---------+"
+    rm -rf $tmp_folder
+}
+
+main $@

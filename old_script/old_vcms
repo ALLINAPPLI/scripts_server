@@ -1,0 +1,105 @@
+#/bin/bash
+function vcms() {
+  # var_env
+  
+  listSite=$(plesk bin site --list)
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  echo "| Instance                            | CMS         | CMS Version  | PHP     |"
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  
+  for instance_wp in $listSite; do
+    versionCIVI_WP=$(grep "define('\$wp_version'" $racine/$instance_wp/httpdocs/wp-includes/version.php 2>/dev/null | awk -F"'" '{print $4}')
+    
+    if [ -f $racine/$instance_wp/.php-version ]; then
+      versionPHP_WP=$(cat $racine/$instance_wp/.php-version 2>/dev/null)
+    else
+      versionPHP_WP="Unknown"
+    fi
+    
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_wp" "Wordpress" "$versionCIVI_WP" "$versionPHP_WP"
+  done
+    
+  for instance_drupal in $listSite; do
+    versionCIVI_DRUPAL=$(head -n 1 $racine/$instance_drupal/httpdocs/CHANGELOG.txt 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+    if [ -f $racine/$instance_drupal/.php-version ]; then
+      versionPHP_DRUPAL=$(cat $racine/$instance_drupal/.php-version 2>/dev/null)
+    else
+      versionPHP_DRUPAL="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_drupal" "Drupal" "$versionCIVI_DRUPAL" "$versionPHP_DRUPAL"
+  done  
+
+  for instance_standalone in $listSite; do
+    versionCIVI_STANDALONE=$(grep '<version_no>' $racine/$instance_standalone/httpdocs/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_standalone/.php-version ]; then
+      versionPHP_STANDALONE=$(cat $racine/$instance_standalone/.php-version 2>/dev/null)
+    else
+      versionPHP_STANDALONE="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_standalone" "Standalone" "$versionCIVI_STANDALONE" "$versionPHP_STANDALONE"
+  done
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+}
+
+function vcms_old() {
+  # var_env
+
+  listSite=$(plesk bin site --list)
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  echo "| Instance                            | CMS         | CMS Version  | PHP     |"
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  
+  for instance_wp in $listSite; do
+    if [ -f $racine/$instance_wp/httpdocs/wp-includes/version.php ]; then
+      version_WP=$(grep "^\$wp_version" $racine/$instance_wp/httpdocs/wp-includes/version.php | sed -E "s/'([0-9.]+)';/\1/")
+	  else 
+	    version_WP="Unknown"
+	  fi
+   
+    if [ -f $racine/$instance_wp/.php-version ]; then
+      versionPHP_WP=$(cat $racine/$instance_wp/.php-version 2>/dev/null)
+    else
+      versionPHP_WP="Unknown"
+    fi
+    
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_wp" "Wordpress" "$version_WP" "$versionPHP_WP"
+  done
+    
+  for instance_drupal in $listSite; do
+    if [ -f $racine/$instance_drupal/httpdocs/CHANGELOG.txt ]; then
+  	  version_DRUPAL=$(head -n 1 $racine/$instance_drupal/httpdocs/CHANGELOG.txt | grep -oE '[0-9]+(\.[0-9]+)+')
+ 	  else 
+	    version_WP="Unknown"
+	  fi
+
+    if [ -f $racine/$instance_drupal/.php-version ]; then
+      versionPHP_DRUPAL=$(cat $racine/$instance_drupal/.php-version 2>/dev/null)
+    else
+      versionPHP_DRUPAL="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_drupal" "Drupal" "$version_DRUPAL" "$versionPHP_DRUPAL"
+  done  
+
+  for instance_standalone in $listSite; do
+    version_STANDALONE=$(grep '<version_no>' $racine/$instance_standalone/httpdocs/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_standalone/.php-version ]; then
+      versionPHP_STANDALONE=$(cat $racine/$instance_standalone/.php-version 2>/dev/null)
+    else
+      versionPHP_STANDALONE="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_standalone" "Standalone" "$version_STANDALONE" "$versionPHP_STANDALONE"
+  done
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+}
+
+vcms
