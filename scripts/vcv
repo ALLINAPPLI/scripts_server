@@ -131,7 +131,7 @@ process_cv_status()
     local success=$?
 
     local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
-    local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes/ltst-php-version))
+    local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
     local tmp_file="$tmp_folder/$1"
 
     if [[ $success == 0 ]]; then
