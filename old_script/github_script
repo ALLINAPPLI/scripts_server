@@ -1,0 +1,63 @@
+### TEMPORAIRE RiverLea Aliases pour git clone de l'extension de CiviCRM et activation //experimental >> à simplifier
+function gcrl_old() {
+  instance=$(getplesksite)
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+  ext1="riverlea"
+  
+  testCMS
+  
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext/
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext/
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/httpdocs/ext/
+    break
+  done
+
+  git clone "$rl" # git clone sur le repertoire ext
+  cv en "$ext1" && cv updb && cv flush
+  rep
+  cd $racine/$instance/httpdocs/
+  echo -e "L'extension \033[32mRiverLea\033[0m a été installée"
+}
+
+### TEMPORAIRE RiverLea Aliases pour git pull de l'extension de CiviCRM et activation //experimental >> à simplifier
+function gprl_old() {
+  racine="/var/www/vhosts"
+  instance=$(getplesksite)
+  ext1="riverlea"
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+  cmswp="httpdocs/wp-content/uploads/civicrm/ext"
+  cmsdrupal="httpdocs/sites/default/files/civicrm/ext"
+  cmsstandalone="httpdocs/ext"
+  testCMS
+
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/$cmswp/$ext1
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd /$racine/$instance/$cmsdrupal/$ext1
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/$cmsstandalone/$ext1
+    break
+  done
+
+  git pull "$rl" # git clone sur le repertoire ext
+  cv updb
+  rep
+  cd $racine/$instance/httpdocs
+  echo -e "L'extension $ext1 a été mise à jour"
+}
+

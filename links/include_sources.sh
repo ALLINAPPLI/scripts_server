@@ -11,3 +11,4 @@ for ele in $(ls /etc/my_common/sources); do
 done
 
 export PATH="$PATH:/etc/my_common/bin"
+export CUSTOME_INCLUDES="/etc/my_common/includes"

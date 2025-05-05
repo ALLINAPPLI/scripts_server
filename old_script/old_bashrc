@@ -1,0 +1,657 @@
+export PATH=/opt/plesk/php/8.1/bin:/root/.nvm/versions/node/v10.24.0/bin:/opt/plesk/php/7.4/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/root/bin:/usr/local/bin/micro:/usr/local/bin/dompdf; COLUMNS=237;
+
+### Chemin de bashrc et résumé des alias
+# /root/.bashrc
+# /root/aliases.txt
+
+# ## Envoi du rapport pour la création de comptes web 
+# function cnec() {
+#   cd $racine/cnec.gestad.net/httpdocs && cv api3 Job.mail_report instanceId=49 format="csv" 
+# }
+
+### Alias pour réparer les droits sur toutes les instances
+alias repall="plesk repair fs -y"
+
+### Aliases pour le placement dans le repertoire vhosts, ou pour lancer une commande rapidement
+alias www="cd /var/www/vhosts"
+alias cl="clear"
+
+### Fonctions utiles à appeler a chaque scripts pour qu'elles soient mises en place. Equivalent en bash à 'source script.sh'
+## !! Ne pas appeller ces alias dans le terminal
+# Mise en place des couleurs
+function var_env() {
+  racine="/var/www/vhosts"
+
+  GREEN='\033[0;32m'
+  RED='\033[0;31m'
+  WHITE='\033[1;37m'
+  NC='\033[0m' # No color
+}
+ 
+### Selection d'instance et Test CMS simple
+# Fonction test qui retourne un element. Comparer cet element avec le retour de la fonction ecrite 
+function select_and_testCMS() {
+  var_env
+  echo "Quelle instance choisissez vous ?"
+
+  # Récupération de la liste des domaines 
+  listSite=($(plesk bin site --list))
+  select instance in "${listSite[@]}";
+  	do 
+      echo -e '\e[93m=============================================\033[0m'
+      echo -e "L'instance choisie est : \e[1;32m$instance\e[0m"
+  	  echo " "
+      break;
+  done
+
+  test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
+  test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
+  test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
+}
+
+### Test CMS simple
+function testCMS() {
+  test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
+  test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
+  test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
+}
+
+function fonction_test() {  
+  var_env
+  select_and_testCMS
+  echo $instance
+  
+  while [ "$cms_instance" == "wordpress" ]; do 
+    echo "..."
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    echo "..."
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    echo "..."
+    break
+  done
+}
+
+###*** Liste des Aliases ***###
+
+# Vider le cache nginx
+#function ngcache() {
+#  select_and_testCMS
+#  rm -rf /var/cache/nginx/${variable}_	
+#}
+
+# Acceder au dossier scripts/
+alias scripts="cd /home/scripts"
+
+### Aliases pour lancer un des scripts
+alias clone="cd /home/scripts ; ./clonage.sh" ## Lancement du script de clonage d'instances
+alias up="cd /home/scripts ; ./civi_update.sh" ## Lancement du script civi-update.sh, pour la mise a jour de versions civicrm de l'instance que l'on souhaite # && cv upgrade:db && cv updb
+alias backup="cd /home/scripts ; ./save.sh" ## Lancement du script de sauvegarde d'instances
+alias clonebdd="cd /home/scripts ; ./clonage_bdd.sh" ## Lancement du script de clonage de base de données
+alias remp="cd /home/scripts ; ./remplacement_valeurs_bdd.sh" ## Lancement du script de remplacement de valeurs dans base de données
+alias vidage="cd /home/scripts ; ./vidage.sh" ## Lancement du script de vidage de BDD
+
+### Aliases pour les commandes "cv"
+alias cvup="cv upgrade:db && rep"
+alias list="cv ext:list -L --columns=key,label,version,status" 
+alias listi="cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed"
+alias listu="cv ext:list -L --columns=key,label,version,status --statuses=uninstalled"
+alias listd="cv ext:list -L --columns=key,label,version,status --statuses=disabled"
+alias listup="cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed --upgrade=available"
+
+### Alias pour snpnc-impots
+function impots() {
+  var_env
+  cd $racine/sandbox.snpnc.org/httpdocs/snpnc-impots	
+}
+alias deploydev="npm run build && npm run deploy:dev"
+alias deployprod="npm run build && npm run deploy:prod"
+
+### Installation et activation d'une ou plusieurs extensions CiviCRM, pour les nouvelles ou les mises à jour
+function dll() {
+  while [ $# -gt 0 ]
+    do
+      #echo "Installation et activation de l'extension "$1""
+      cv ext:download "$1" --force  
+      cv ext:enable "$1"
+     shift
+  done
+cv updb && rep
+}
+
+### Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
+function en() {
+  while [ $# -gt 0 ]
+    do
+      #echo "Activation de l'extension "$1""
+      cv ext:enable "$1"
+     shift
+    done
+cv updb && rep
+}
+
+### Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
+function dis() {
+  while [ $# -gt 0 ]
+    do
+      #echo "Désactivation de l'extension "$1""
+      cv ext:disable "$1"
+     shift
+    done
+cv updb && rep
+}
+
+### Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dossier extensions
+function un() {
+  while [ $# -gt 0 ]       
+    do
+      local extension_name=$1
+      local extension_key=$(cv ext:list -L --columns=key,label | grep "$extension_name" | awk '{print $2}')
+        if [ -n "$extension_key" ]; then
+          chemin_extensions=$(cv ev 'echo Civi::paths()->getPath("[civicrm.files]/ext");' -q)
+          echo -e ">> Désinstallation et suppression de $extension_key..."
+          cv ext:uninstall "$1"      
+		      cd $chemin_extensions
+          find -regex ".*$extension_name.*" -print0 | xargs -0 rm -rf
+        else
+	        echo "$extension_name non trouvée."
+        fi
+      shift       
+  done     
+cv updb && cv flush && rep  
+}
+
+### Affichage de toute les instances avec leur version de CiviCRM
+function vcv() {
+  var_env
+  
+  listSite=$(plesk bin site --list)
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  echo "| Instance                            | CMS         | CiviCRM      | PHP     |"
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  
+  for instance_wp in $listSite; do
+    versionCIVI_WP=$(grep "define('CIVICRM_PLUGIN_VERSION'" $racine/$instance_wp/httpdocs/wp-content/plugins/civicrm/civicrm.php 2>/dev/null | awk -F"'" '{print $4}')
+    
+    if [ -f $racine/$instance_wp/.php-version ]; then
+      versionPHP_WP=$(cat $racine/$instance_wp/.php-version 2>/dev/null)
+    else
+      versionPHP_WP="Unknown"
+    fi
+    
+    if [ -f "$racine/$instance_wp/httpdocs/wp-content/uploads/civicrm/civicrm.settings.php" ]; then
+      printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_wp" "Wordpress" "$versionCIVI_WP" "$versionPHP_WP"
+    fi
+  done
+    
+  for instance_drupal in $listSite; do
+    versionCIVI_DRUPAL=$(grep '<version_no>' $racine/$instance_drupal/httpdocs/sites/all/modules/civicrm/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_drupal/.php-version ]; then
+      versionPHP_DRUPAL=$(cat $racine/$instance_drupal/.php-version 2>/dev/null)
+    else
+      versionPHP_DRUPAL="Unknown"
+    fi
+      
+    if [ -f "$racine/$instance_drupal/httpdocs/sites/default/civicrm.settings.php" ]; then
+      printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_drupal" "Drupal" "$versionCIVI_DRUPAL" "$versionPHP_DRUPAL"
+    fi
+  done  
+
+  for instance_standalone in $listSite; do
+    versionCIVI_STANDALONE=$(grep '<version_no>' $racine/$instance_standalone/httpdocs/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_standalone/.php-version ]; then
+      versionPHP_STANDALONE=$(cat $racine/$instance_standalone/.php-version 2>/dev/null)
+    else
+      versionPHP_STANDALONE="Unknown"
+    fi
+      
+    if [ -f "$racine/$instance_standalone/httpdocs/private/civicrm.settings.php" ]; then
+      printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_standalone" "Standalone" "$versionCIVI_STANDALONE" "$versionPHP_STANDALONE"
+    fi
+  done
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+}
+
+function vcms() {
+  var_env
+  
+  listSite=$(plesk bin site --list)
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  echo "| Instance                            | CMS         | CMS Version  | PHP     |"
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  
+  for instance_wp in $listSite; do
+    versionCIVI_WP=$(grep "define('\$wp_version'" $racine/$instance_wp/httpdocs/wp-includes/version.php 2>/dev/null | awk -F"'" '{print $4}')
+    
+    if [ -f $racine/$instance_wp/.php-version ]; then
+      versionPHP_WP=$(cat $racine/$instance_wp/.php-version 2>/dev/null)
+    else
+      versionPHP_WP="Unknown"
+    fi
+    
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_wp" "Wordpress" "$versionCIVI_WP" "$versionPHP_WP"
+  done
+    
+  for instance_drupal in $listSite; do
+    versionCIVI_DRUPAL=$(head -n 1 $racine/$instance_drupal/httpdocs/CHANGELOG.txt 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+
+    if [ -f $racine/$instance_drupal/.php-version ]; then
+      versionPHP_DRUPAL=$(cat $racine/$instance_drupal/.php-version 2>/dev/null)
+    else
+      versionPHP_DRUPAL="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_drupal" "Drupal" "$versionCIVI_DRUPAL" "$versionPHP_DRUPAL"
+  done  
+
+  for instance_standalone in $listSite; do
+    versionCIVI_STANDALONE=$(grep '<version_no>' $racine/$instance_standalone/httpdocs/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_standalone/.php-version ]; then
+      versionPHP_STANDALONE=$(cat $racine/$instance_standalone/.php-version 2>/dev/null)
+    else
+      versionPHP_STANDALONE="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_standalone" "Standalone" "$versionCIVI_STANDALONE" "$versionPHP_STANDALONE"
+  done
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+}
+
+function vcms_old() {
+  var_env
+
+  listSite=$(plesk bin site --list)
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  echo "| Instance                            | CMS         | CMS Version  | PHP     |"
+  echo "+-------------------------------------+-------------+--------------+---------+"
+  
+  for instance_wp in $listSite; do
+    if [ -f $racine/$instance_wp/httpdocs/wp-includes/version.php ]; then
+      version_WP=$(grep "^\$wp_version" $racine/$instance_wp/httpdocs/wp-includes/version.php | sed -E "s/'([0-9.]+)';/\1/")
+	  else 
+	    version_WP="Unknown"
+	  fi
+   
+    if [ -f $racine/$instance_wp/.php-version ]; then
+      versionPHP_WP=$(cat $racine/$instance_wp/.php-version 2>/dev/null)
+    else
+      versionPHP_WP="Unknown"
+    fi
+    
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_wp" "Wordpress" "$version_WP" "$versionPHP_WP"
+  done
+    
+  for instance_drupal in $listSite; do
+    if [ -f $racine/$instance_drupal/httpdocs/CHANGELOG.txt ]; then
+  	  version_DRUPAL=$(head -n 1 $racine/$instance_drupal/httpdocs/CHANGELOG.txt | grep -oE '[0-9]+(\.[0-9]+)+')
+ 	  else 
+	    version_WP="Unknown"
+	  fi
+
+    if [ -f $racine/$instance_drupal/.php-version ]; then
+      versionPHP_DRUPAL=$(cat $racine/$instance_drupal/.php-version 2>/dev/null)
+    else
+      versionPHP_DRUPAL="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_drupal" "Drupal" "$version_DRUPAL" "$versionPHP_DRUPAL"
+  done  
+
+  for instance_standalone in $listSite; do
+    version_STANDALONE=$(grep '<version_no>' $racine/$instance_standalone/httpdocs/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}') 
+      
+    if [ -f $racine/$instance_standalone/.php-version ]; then
+      versionPHP_STANDALONE=$(cat $racine/$instance_standalone/.php-version 2>/dev/null)
+    else
+      versionPHP_STANDALONE="Unknown"
+    fi
+      
+    printf "| %-35s | %-11s | %-12s | %-7s |\n" "$instance_standalone" "Standalone" "$version_STANDALONE" "$versionPHP_STANDALONE"
+  done
+
+  echo "+-------------------------------------+-------------+--------------+---------+"
+}
+
+### cv api Domain.getvalue return="version"
+### utilité ???
+
+### Vidage simple du cache de CiviCRM
+function cvf() {
+  cv flush && rep
+}
+
+### Vidage complet du cache de CiviCRM
+function cvff() {
+  cv flush && cv api4 System.flush && cv api4 System.flush triggers=1 && rep
+}
+
+### Récuperation de l'instance où l'on est placé
+function getplesksite() {
+  var_env
+  local current_dir="$(pwd)"
+  local vhost_dir=$racine
+
+  if [[ "$current_dir" == *"$vhost_dir"* ]]; then
+    local site_path=${current_dir#*$vhost_dir/}
+    local site_name=${site_path%%/*}
+    echo "$site_name"
+  fi
+}
+
+### Lancement de la commande plesk-repair sur l'instance où l'on est placé 
+function rep() {
+  repair=$(getplesksite)
+
+  if [ -n "$repair" ]; then
+    plesk repair fs $repair -y 
+  fi
+}
+
+### Aliases pour git clone de l'extension de CiviCRM et activation //experimental >> à simplifier
+function cvgc() {    
+  instance=$(getplesksite) 
+  var_env
+  testCMS
+
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext && git clone "$1" # git clone sur le repertoire ext
+    extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+
+    #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
+    extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
+    ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
+    cv en "$extracted_string" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été installée"      
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext && git clone "$1" # git clone sur le repertoire ext
+    extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+
+    #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
+    extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
+    ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
+    cv en "$extracted_string" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été installée"    
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/httpdocs/ext && git clone "$1" # git clone sur le repertoire ext
+    extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+
+    #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
+    extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
+    ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
+    cv en "$extracted_string" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été installée"
+    break
+  done
+  rep
+}
+
+### Aliases pour git pull de l'extension de CiviCRM et activation
+## condition drupal à gérer
+function cvgp() {
+  instance=$(getplesksite)
+  extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+  var_env
+  testCMS
+
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext/$extension && git pull "$1"
+    #cv en "$extension" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext/$extension && git pull "$1"
+    #cv en "$extension" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/httpdocs/ext/$extension && git pull "$1"
+    #cv en "$extension" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
+    break
+  done
+  rep
+}
+
+### TEMPORAIRE RiverLea Aliases pour git clone de l'extension de CiviCRM et activation //experimental >> à simplifier
+function gcrl_old() {
+  instance=$(getplesksite)
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+  ext1="riverlea"
+  
+  var_env
+  testCMS
+  
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext/
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext/
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/httpdocs/ext/
+    break
+  done
+
+  git clone "$rl" # git clone sur le repertoire ext
+  cv en "$ext1" && cv updb && cv flush
+  rep
+  cd $racine/$instance/httpdocs/
+  echo -e "L'extension \033[32mRiverLea\033[0m a été installée"
+}
+
+### TEMPORAIRE RiverLea Aliases pour git pull de l'extension de CiviCRM et activation //experimental >> à simplifier
+function gprl_old() {
+  racine="/var/www/vhosts"
+  instance=$(getplesksite)
+  ext1="riverlea"
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+  cmswp="httpdocs/wp-content/uploads/civicrm/ext"
+  cmsdrupal="httpdocs/sites/default/files/civicrm/ext"
+  cmsstandalone="httpdocs/ext"
+  testCMS
+
+  while [ "$cms_instance" == "wordpress" ]; do 
+    cd $racine/$instance/$cmswp/$ext1
+    break
+  done
+
+  while [ "$cms_instance" == "drupal" ]; do 
+    cd /$racine/$instance/$cmsdrupal/$ext1
+    break
+  done
+
+  while [ "$cms_instance" == "standalone" ]; do 
+    cd $racine/$instance/$cmsstandalone/$ext1
+    break
+  done
+
+  git pull "$rl" # git clone sur le repertoire ext
+  cv updb
+  rep
+  cd $racine/$instance/httpdocs
+  echo -e "L'extension $ext1 a été mise à jour"
+}
+
+## RiverLea
+function gcrl() {
+  echo -e ">> Installation de l'extension ${GREEN}$ext1${NC}..."
+  instance=$(getplesksite)
+  var_env
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+  ext1="riverlea"
+  
+  cd httpdocs
+  chemin_extensions=$(cv ev 'echo Civi::paths()->getPath("[civicrm.files]/ext");')
+  cd $chemin_extensions
+
+  git clone "$rl" && cv en "$ext1" && cv updb && cv flush && rep
+
+  cd $racine/$instance/httpdocs/
+}
+
+function gprl() {
+  echo -e ">> Mise à jour de l'extension ${GREEN}$ext1${NC}..."
+  instance=$(getplesksite)
+  var_env
+  ext1="riverlea"
+  rl="https://lab.civicrm.org/extensions/riverlea.git"
+
+  cd httpdocs
+  chemin_extensions=$(cv ev 'echo Civi::paths()->getPath("[civicrm.files]/ext");')
+  cd $chemin_extensions/$ext1 
+
+  git pull "$rl" && cv updb && cv flush && rep
+
+  cd $racine/$instance/httpdocs/
+}
+
+### Script pour appliquer un patch depuis Github pour CiviCRM
+function cvpatch() {
+  var_env
+  select_and_testCMS
+  echo "$instance"
+  
+  while [ "$cms_instance" == "wordpress" ] 
+  	 do
+  	 cd $racine/$instance/httpdocs/wp-content/plugins/civicrm/civicrm/
+  	 apply_p
+  	 break
+  done
+	
+  while [ "$cms_instance" == "drupal" ] 
+	 do
+  	 cd $racine/$instance/httpdocs/sites/all/modules/civicrm/
+	 apply_p
+  	 rm ${numero_variable}.diff
+     break
+  done  
+
+  while [ "$cms_instance" == "standalone" ] 
+	 do
+  	 cd $racine/$instance/httpdocs/core
+	 apply_p
+  	 rm ${numero_variable}.diff
+     break
+  done
+  cv flush && rep
+  #rm $file_diff
+}
+
+function apply_p() {
+  echo "URL Github du patch CiviCRM :"
+  read url
+	  
+  numero_variable=$(echo "$url" | grep -oP '(?<=/pull/).*')
+  echo "Numéro du patch : $numero_variable"
+
+  wget "$url.diff" && patch -p1 < "$numero_variable.diff" && echo -e ">> [${GREEN}RÉUSSI${NC}] Patch appliqué" 
+
+  #$file_diff="${numero_variable}.diff"
+
+  # Erreur à régler
+  # >> [RÉUSSI] Patch installé
+  # -bash: =30915.diff : commande introuvable
+}
+ 
+### Aliases pour git clone de l'extension de Wordpress et activation
+function wpgc() {
+  instance=$(getplesksite)
+  var_env
+  
+  extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//')
+  extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}')
+
+  echo ">> Clonage de l'extension : $extracted_string"
+  cd $racine/$instance/httpdocs/wp-content/plugins
+
+  git clone "$1" && wp plugin activate "$extracted_string" --allow-root
+  cd $racine/$instance/httpdocs
+  rep
+}	
+
+### Alias pour git pull à transformer en fonction 
+### A FINALISER
+function wpgp() {
+  instance=$(getplesksite)
+  var_env
+  
+  extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//')
+  extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}')
+
+  echo "Mise à jour de l'extension : $extracted_string"
+  cd $racine/$instance/httpdocs/wp-content/plugins/$extracted_string
+
+  git pull "$1"
+  cd $racine/$instance/httpdocs
+  rep
+}
+
+### Git commit
+function committ() {
+  git add .
+  read -p "Votre message du commit : " message
+  git commit -m "$message"
+  git push
+  echo "Votre repo s'est bien mis à jour !"
+}
+
+### Aliases pour les commandes du cli  "wp"
+alias wpa="wp plugin activate "$1" --allow-root"
+alias wpd="wp plugin deactivate "$1" --allow-root"
+alias wpu="wp plugin uninstall "$1" --allow-root"
+### alias wpf="wp cache --allow-root flush"
+function wpf() {
+  wp cache --allow-root flush && rep
+}
+alias wpl="wp plugin list --allow-root"
+alias wpup="wp plugin update "$1" --allow-root" 
+
+### Aliases pour la modification du fichier de configuration (celui-ci)
+alias bashrc="nano ~/.bashrc"
+alias mbashrc="micro ~/.bashrc"
+alias saverc="source ~/.bashrc"
+alias aliass="cat ~/.aliases.txt"
+alias m="micro"
+
+### Affichage du chemin actuel sur le répertoire
+PS1='[\u@IONOS_AIA \W]\$ ' # Affichage -> [root@IONOS_AIA dossier]#
+
+### Drush
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"  # This loads nvm
+[ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"  # This loads nvm bash_completion
+
+# pnpm
+export PNPM_HOME="/root/.local/share/pnpm"
+case ":$PATH:" in
+  *":$PNPM_HOME:"*) ;;
+  *) export PATH="$PNPM_HOME:$PATH" ;;
+esac
+# pnpm end
+
+export PATH="$HOME/custom_cmds:$PATH"
