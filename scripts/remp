@@ -1,0 +1,90 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Remplacement de valeurs dans base de données 
+##
+#############################################################
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+mysql_source_database="";
+mysql_source_user="";
+mysql_source_mdp="";
+cms_instance_source="";
+ancienne_valeur=""
+nouvelle_valeur=""
+maintenance_mod=""
+
+source /home/scripts/clone_functions_utils.sh
+source /home/scripts/functions.sh
+cd $vhosts 
+ 
+## Choix de l'instance source
+echo -e '\e[93m=============================================\033[0m'
+echo "Choisissez l'instance dont vous souhaitez changer les valeurs ?" && echo " "
+   
+# Récupération de la liste des domaines 
+listSite=($(plesk bin site --list))
+select folder_source in "${listSite[@]}"; do break; done
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "L'instance choisie est : ${GREEN}$folder_source${NC}"
+
+result="$(get_instance_cms $folder_source)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+print_clone_bdd_resume "BDD du site sélectionné" "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+
+echo -e '\e[93m============================================================\033[0m' && echo " "
+
+# Remplacement de valeurs
+echo " >> Quelles occurrences de la BDD '$mysql_source_database' voulez vous changer ?"
+echo -n " << "
+read ancienne_valeur
+echo " >> Par quoi voulez vous remplacer ces occurrences ?"
+echo -n " << "
+read nouvelle_valeur
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "Vous allez remplacer les occurrences ${GREEN}$ancienne_valeur${NC} par ${GREEN}$nouvelle_valeur${NC} dans la BDD ${GREEN}$mysql_source_database${NC} de l'instance ${GREEN}$folder_source${NC}"
+echo -e '\e[93m=============================================\033[0m'
+
+# Condition pour commencer le script
+echo " >> Voulez vous commencer ? o(oui) ou n(non)"
+echo -n ' << '
+read reponse
+if test "$reponse" = "n"; then
+    echo "Fin du script" && exit 0 
+fi
+
+echo " >> Activer le mode maintenance sur le site source $folder_source ? (O/N)"
+echo -n ' << '
+read maintenance_mod
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    set_maintenance_mode $folder_source $cms_instance_source
+fi
+
+#***  Debut remplacement valeurs BDD  ***#
+cd $vhosts/$folder_source/httpdocs;
+
+get_bdd_from_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+
+count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
+echo -e "${BLUE}[ INFO ]${NC} $count occurence(s) de ${GREEN}$ancienne_valeur${NC} trouvées dans la base"
+
+# Changement de valeurs
+echo -e "${BLUE}[ INFO ]${NC} Remplacement des valeurs en cours..."
+sed -i "s|$ancienne_valeur|$nouvelle_valeur|g" "$mysql_source_database.sql"
+
+count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
+
+set_bdd_in_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp" "$mysql_source_database.sql"
+
+rm $mysql_source_database.sql
+
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    unset_maintenance_mode $folder_source $cms_instance_source
+fi
+
+echo -e "${GREEN}[ SUCCÈS ]${NC} $count occurence(s) de la BDD de ${GREEN}$folder_source${NC} restante" ; echo " " ; cd $vhosts

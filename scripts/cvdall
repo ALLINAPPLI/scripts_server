@@ -1,0 +1,21 @@
+#/bin/bash
+
+if [ "$2" = "-help" ]; then
+    echo "Disable all CiviCRM extensions"
+    exit 0
+fi
+
+source "/home/scripts/clone_functions_utils.sh"
+cms_instance=""
+mysql_database=""
+mysql_user=""
+mysql_mdp=""
+
+current_site=$(basename "$(dirname "$(pwd)")")
+result="$(get_instance_cms $current_site)"
+read cms_instance mysql_database mysql_user mysql_mdp <<< $result
+
+echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
+echo "UPDATE civicrm_extension SET is_active = '0' WHERE is_active LIKE '1'" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+
+echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM désactivées"

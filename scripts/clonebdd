@@ -1,0 +1,107 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Clonage base de données
+##
+#############################################################
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+mysql_source_database="";
+mysql_source_user="";
+mysql_source_mdp="";
+mysql_destination_database="";
+mysql_destination_user="";
+mysql_destination_mdp="";
+sites=$(plesk bin site --list)
+OPTIONS=()
+for site in $sites; do OPTIONS+=("$site" ""); done
+
+
+source /home/scripts/functions.sh
+source /home/scripts/clone_functions_utils.sh
+cd $vhosts 
+
+ 
+## Choix de l'instance source 
+folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_source" ]; then
+    echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
+    exit 1;
+fi
+
+## Choix de l'instance destination 
+folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_destination" ]; then
+    echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
+    exit 1;
+fi
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "L'instance source choisie est : ${GREEN}$folder_source${NC}"
+echo -e "L'instance de destination choisie est : ${GREEN}$folder_destination${NC}"
+echo -e '\e[93m=============================================\033[0m'
+
+result_src="$(get_instance_cms $folder_source)" || exit 1
+result_dest="$(get_instance_cms $folder_destination)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result_src"
+read cms_instance_destination mysql_destination_database mysql_destination_user mysql_destination_mdp <<< "$result_dest"
+
+# Point de contrôle de vérification de $folder_source == $folder_destination 
+exit_on_equal "$folder_source" "$folder_destination" "Source et destination sont égaux, restaurez $folder_source et/ou $folder_destination"
+exit_on_equal  "$mysql_source_user" "$mysql_source_database" "Nom de bdd et username égaux, changez les identifiants de $folder_source depuis Plesk"
+exit_on_equal "$mysql_destination_user" "$mysql_destination_database" "Nom de bdd et username égaux, changez les identifiants de $folder_source depuis Plesk"
+exit_on_equal "$mysql_source_user" "$mysql_destination_user" "Les user source et destination sont égaux, restaurez $folder_source et/ou $folder_destination"	; 
+exit_on_equal "$mysql_source_database" "$mysql_destination_database" "Les nom des bdd source et destination sont égaux, restaurez $folder_source et/ou $folder_destination"	; 
+
+echo -e '\e[93m=============================================\033[0m' 
+echo -e "Vous allez cloner la BDD ${GREEN}$mysql_source_database${NC} de ${GREEN}$folder_source${NC}"
+echo -e "             vers la BDD ${GREEN}$mysql_destination_database${NC} de ${GREEN}$folder_destination${NC}"
+echo -e '\e[93m=============================================\033[0m' 
+
+echo -e "${BLUE}[ INFO ]${NC} Recap:"
+print_clone_bdd_resume "Source" "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+print_clone_bdd_resume "Destination" "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
+
+
+# Condition pour suppression des tables de la base de données destination
+echo "Faut-il vider la base de données $mysql_destination_database de $folder_destination ? o(oui) ou n(non)"
+read reponse1
+if [ "$reponse1" = "o" ]; then
+    vidage_bdd "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
+    display_db_size $mysql_source_database
+    display_db_size $mysql_destination_database
+fi
+
+echo " >> Activer le mode maintenance sur le site source $folder_source ? (O/N)"
+read maintenance_mod
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    set_maintenance_mode $folder_source $cms_instance_source
+fi
+
+echo -e "${BLUE}[ INFO ]${NC} Démarrage du clonage"  
+echo -e '\e[93m============================================================\033[0m' ; echo " "
+#***  Debut du clonage de BDD  ***#
+cd $vhosts/$folder_destination/httpdocs
+
+# Modification des URLs dans la base de données des occurences de $folder_source vers $folder_destination 
+get_bdd_from_instance $mysql_source_database $mysql_source_user $mysql_source_mdp --skip-triggers
+remplacementURL_BDD
+nettoyageAdressesElectroniques
+set_bdd_in_instance $mysql_destination_database $mysql_destination_user $mysql_destination_mdp "$mysql_source_database".sql
+
+rm $mysql_source_database.sql
+
+if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
+    unset_maintenance_mode $folder_source $cms_instance_source
+fi
+
+# Point de contrôle de vérification ou non de l'égalité de l'utilisateur et la base de données destination
+if [ "$mysql_source_user" == "$mysql_destination_user" ] && [ "$mysql_source_database" == "$mysql_destination_database" ]; then
+		echo -e ">> ${RED}[ ERREUR ] ${NC} Les identifiants des domaines source et destination sont similaires, veuillez restaurer $folder_source et/ou $folder_destination" ; echo " "
+		exit 0
+fi 
+
+echo -e ">> BDD de ${GREEN}$folder_source${NC} bien clonée sur la BDD de ${GREEN}$folder_destination${NC}" ; cd $vhosts

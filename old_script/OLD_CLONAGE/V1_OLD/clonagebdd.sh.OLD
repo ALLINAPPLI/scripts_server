@@ -1,0 +1,96 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Clonage base de données
+##
+#############################################################
+
+cd ..
+source clonage/functions.sh
+
+## Récupération de la liste des domaines et des variables de connexion
+######################################################################
+
+echo -e '\e[93m=============================================\033[0m'
+echo "Liste des domaines disponibles : "
+echo " "
+listSite=$(plesk bin site --list);
+echo ${listSite[@]}
+echo " "
+echo "Quelle est l'instance source ?"
+echo " "
+read folder_clone
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de la base de données de l'instance source ?"
+read mysql_clone_database
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de l'utilisateur de la base de données de l'instance source ?"
+read mysql_clone_user
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "MDP de l'utilisateur de la base de données de l'instance source ?"
+read mysql_clone_mdp
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo " "
+echo "Liste des domaines disponibles : "
+echo " "
+listSite=$(plesk bin site --list);
+echo ${listSite[@]}
+echo " "
+echo "Quelle est l'instance cible ?"
+echo " "
+read folder_destination
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de la base de données de l'instance cible ?"
+read mysql_destination_database
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "Nom de l'utilisateur de la base de données de l'instance cible ?"
+read mysql_destination_user
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+echo "MDP de l'utilisateur de la base de données de l'instance cible ?"
+read mysql_destination_mdp
+echo -e '\e[93m=============================================\033[0m'
+
+echo "Vous etes placé ici :"
+pwd 
+
+## condition pour suppression des tables mysql
+echo "Voulez vous vider la base de données de $folder_destination ? o(oui) ou n(non)"
+read reponse1
+if test "$reponse1" = "o"
+then
+	 vidageBDDDestination
+else
+     echo "Démarrage du clonage"  
+fi
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e '\e[93m=============================================\033[0m'
+
+cd $folder_clone/httpdocs
+sudo mysqldump --user=$mysql_clone_user --password=$mysql_clone_mdp $mysql_clone_database > $folder_clone.sql
+sed 's/\sDEFINER=`[^`]*`@`[^`]*`//g' -i $folder_clone.sql
+## cd ..
+zip $folder_clone.zip $folder_clone.sql
+cd ../..
+rm -f $folder_clone/httpdocs/$folder_clone.sql
+mv $folder_clone/httpdocs/$folder_clone.zip $folder_destination/httpdocs/
+cd $folder_destination/httpdocs
+unzip $folder_clone.zip
+rm -f $folder_clone.zip
+
+remplacementURLfichierSQL
+
+rm -rf $folder_clone.sql
+echo -e '\e[93m========================================\033[0m'
+echo "La modification des URLs a été effectuée"
+echo -e '\e[93m========================================\033[0m'

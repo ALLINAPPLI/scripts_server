@@ -1,0 +1,90 @@
+#!/bin/bash
+##
+## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+##
+#############################################################
+##
+##  Remplacement de valeurs dans base de données 
+##
+#############################################################
+
+vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
+
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+WHITE='\033[1;37m'
+NC='\033[0m' # No color
+
+source functions.sh 
+cd $vhosts 
+ 
+## Choix de l'instance source
+echo -e '\e[93m=============================================\033[0m'
+echo "Choisissez l'instance dont vous souhaitez changer les valeurs ?" && echo " "
+   
+# Récupération de la liste des domaines 
+listSite=($(plesk bin site --list))
+select folder_source in "${listSite[@]}";
+  do 
+    echo -e '\e[93m=============================================\033[0m'
+	  echo -e "L'instance choisie est : ${GREEN}$folder_source${NC}"
+	  sleep 0.6
+    break;
+done
+
+# Affectation de variables selon le CMS de l'instance 
+test -e $vhosts/$folder_source/httpdocs/wp-config.php && cms_instance_source="wordpress"
+test -e $vhosts/$folder_source/httpdocs/sites/default/settings.php && cms_instance_source="drupal"
+test -e $vhosts/$folder_source/httpdocs/private/civicrm.settings.php && cms_instance_source="standalone"
+
+# Affichage en tableau de la base de données de $folder_source (instance source)
+plesk db "select d.name as 'Domaine', db.name as 'Base de donnees' from data_bases db,domains d,clients c where d.cl_id=c.id and db.dom_id=d.id and d.name='$folder_source'"
+
+# Récuperation des identifiants de l'instance 
+if [ "$cms_instance_source" == "wordpress" ]; then
+
+    getWordpressID_Source 
+fi 
+
+if [ "$cms_instance_source" == "drupal" ]; then
+    getDrupalID_Source 
+fi 
+
+if [ "$cms_instance_source" == "standalone" ]; then
+    getStandaloneID_Source 
+fi 
+ 
+echo -e '\e[93m============================================================\033[0m' && echo " "
+
+# Remplacement de valeurs
+echo "Quelles occurrences de la BDD '$mysql_source_database' voulez vous changer ?"
+read ancienne_valeur && echo " "
+echo "Par quoi voulez vous remplacer ces occurrences ?"
+read nouvelle_valeur && echo " "
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "Vous allez remplacer les occurrences ${GREEN}$ancienne_valeur${NC} par ${GREEN}$nouvelle_valeur${NC} dans la BDD ${GREEN}$mysql_source_database${NC} de l'instance ${GREEN}$folder_source${NC}"
+echo -e '\e[93m=============================================\033[0m'
+
+# Condition pour commencer le script
+echo "Voulez vous commencer ? o(oui) ou n(non)"
+read reponse
+if test "$reponse" = "n"
+then
+    exit 0 && echo "Fin du script"
+fi
+
+#***  Debut remplacement valeurs BDD  ***#
+cd $vhosts/$folder_source/httpdocs ; echo " "
+
+exportBDD_Source # Export de la BDD actuelle
+
+# Changement de valeurs
+echo -e ">> Remplacement des valeurs en cours..."
+sed -i "s|$ancienne_valeur|$nouvelle_valeur|g" "$mysql_source_database.sql"
+
+importBDD_Source # Import de la nouvelle BDD
+
+rm $mysql_source_database.sql
+
+echo " " ; echo -e ">> Occurences de la BDD de ${GREEN}$folder_source${NC} changées" ; echo " " ; cd $vhosts
