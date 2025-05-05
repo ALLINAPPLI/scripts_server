@@ -30,7 +30,7 @@ version_compare()
 process_for_single_site()
 {
     local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
-    local php_colors=$(version_compare $php_version $(cat $CUSTOME_INCLUDES/ltst-php-version))
+    local php_colors=$(version_compare $php_version $(cat $CUSTOM_INCLUDES/ltst-php-version))
 
     test -e /var/www/vhosts/$1/httpdocs/wp-config.php && local cms="wordpress";
     test -e /var/www/vhosts/$1/httpdocs/sites/default/settings.php && local cms="drupal";

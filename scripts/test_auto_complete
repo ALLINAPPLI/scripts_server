@@ -1,8 +1,0 @@
-#!/bin/bash
-
-case "$1" in
-  --start) echo "Démarrage..." ;;
-  --stop) echo "Arrêt..." ;;
-  --status) echo "Statut..." ;;
-  *) echo "Usage: $0 --start|--stop|--status" ;;
-esac

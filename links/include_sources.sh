@@ -3,6 +3,7 @@
 for ele in $(ls /etc/my_common/sources); do
     if [ -r "$ele" ]; then
         if [ "$PS1" ]; then
+            echo "sourcing $ele"
             . "/etc/my_common/sources/$ele"
         else
             . "/etc/my_common/sources/$ele" >/dev/null
@@ -11,5 +12,5 @@ for ele in $(ls /etc/my_common/sources); do
 done
 
 export PATH="$PATH:/etc/my_common/bin"
-export CUSTOME_INCLUDES="/etc/my_common/includes"
+export CUSTOM_INCLUDES="/etc/my_common/includes"
 export racine="/var/www/vhosts"
