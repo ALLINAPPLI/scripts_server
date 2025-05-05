@@ -37,8 +37,8 @@ OPTIONS=()
 for site in $sites; do OPTIONS+=("$site" ""); done
 
 
-source "/home/scripts/clone_functions_utils.sh";
-source "/home/scripts/functions.sh";
+source "$CUSTOM_DIR/includesclone_functions_utils.sh";
+source "$CUSTOM_DIR/includesfunctions.sh";
  
 #################################################################
 # Récupération de la liste des domaines
