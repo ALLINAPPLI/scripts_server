@@ -13,8 +13,8 @@ mysql_source_database="";
 mysql_source_user="";
 mysql_source_mdp="";
 
-source "/home/scripts/clone_functions_utils.sh";
-source "/home/scripts/functions.sh";
+source "$CUSTOM_DIR/includesclone_functions_utils.sh";
+source "$CUSTOM_DIR/includesfunctions.sh";
 cd $vhosts
  
 ## Choix de l'instance source 
