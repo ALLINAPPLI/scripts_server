@@ -36,3 +36,19 @@ for ele in $(ls /etc/my_common/sources); do
     fi
 done
 
+
+if [ "$PS1" ]; then
+	color_return()
+	{
+	    return_value=$?
+	    if [ $return_value == 0 ]; then
+	        echo -e '\e[32m'[${return_value}]
+	    else
+	        echo -e '\e[31m'[${return_value}]
+	    fi
+	    return ${return_value}
+	}
+
+	PS1='$(color_return)\[\e[00m\][\[\e[01;33m\]\u@\W\[\e[00m\]]\[\e[00;36m\]\$ \[\e[00m\]'
+fi
+
