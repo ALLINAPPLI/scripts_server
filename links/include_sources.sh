@@ -24,6 +24,7 @@ export WHITE='\e[97m'
 export GREY='\e[90m'
 export NC='\e[0m'
 
+
 for ele in $(ls /etc/my_common/sources); do
     fullpath="/etc/my_common/sources/$ele"
     if [ -r "$fullpath" ]; then
