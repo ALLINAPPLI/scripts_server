@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 upgrade_extension_of_site()
 {
@@ -20,7 +20,7 @@ upgrade_extension_of_site()
         cd $ext_folder/$ele
         echo -e "${YELLOW}===============================${NC}"
         echo -e "${RED}[ INFO ]${NC} s'occupe actuellement de ${PURPLE}${ele}${NC}"
-        yes | civix upgrade --yes
+        yes | civix upgrade -n
         pwd
         echo -e "${YELLOW}===============================${NC}"
     done
