@@ -38,17 +38,20 @@ done
 
 
 if [ "$PS1" ]; then
+	green='\e[32m'
+	red='\e[31m'
+	cyan='\e[00;36m'
 	color_return()
 	{
 	    return_value=$?
 	    if [ $return_value == 0 ]; then
-	        echo -e '\e[32m'[${return_value}]
+	        echo -e "$green[${return_value}]$NC"
 	    else
-	        echo -e '\e[31m'[${return_value}]
+	        echo -e "$red[${return_value}]$NC"
 	    fi
 	    return ${return_value}
 	}
 
-	PS1='$(color_return)\[\e[00m\][\[\e[01;33m\]\u@\W\[\e[00m\]]\[\e[00;36m\]\$ \[\e[00m\]'
+	PS1='$(color_return)[\u@\W]'$cyan'\$ \[\e[00m\]'
 fi
 
