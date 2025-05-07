@@ -40,6 +40,13 @@ if [ ! -e "$path_bin/wp" ]; then
     echo "✅ wp-cli installé dans $path_bin."
 fi
 
+if [ ! -e "$path_bin/civix" ]; then
+    echo "➡️ Installation de civix-cli..."
+	sudo curl -LsS "https://download.civicrm.org/civix/civix.phar" -o "/usr/local/bin/civix"
+	sudo chmod +x "/usr/local/bin/civix"
+    echo "✅ wp-cli installé dans $path_bin."
+fi
+
 if [ ! -e "$path_bin/drush" ]; then
     if command -v composer &> /dev/null; then
         echo "➡️ Installation de drush via Composer..."
@@ -52,3 +59,6 @@ if [ ! -e "$path_bin/drush" ]; then
         echo "🚨 Composer n'est pas installé. Impossible d'installer drush."
     fi
 fi
+
+
+

@@ -19,8 +19,8 @@ shopt -s expand_aliases
 
 vhosts="/var/www/vhosts"
 
-source functions_civicrm.sh
-source /home/scripts/functions.sh
+source $CUSTOM_DIR/includes/functions_civicrm.sh
+source $CUSTOM_DIR/includes/functions.sh
 
 echo -e '\e[93m=============================================\033[0m'
 echo "Choisissez l'instance à mettre à jour parmi les domaines disponibles : "
@@ -60,9 +60,8 @@ versionCIVI_STANDALONE=$(grep '<version_no>' $chemin_plugins_standalone/core/xml
 echo -e '\e[93m=============================================\033[0m';
 
 # Récuperation de la dernière version de CiviCRM avec une commande Wordpress sur la testwpcivi
-cd $vhosts/testwpcivi.appli.in/httpdocs;
 echo -e "${BLUE}[ INFO ]${NC} récupération de la derniere version stable disponible"
-last_version=$(wp civicrm core check-update --version=stable --format=version --allow-root);
+last_version=$(curl -s https://download.civicrm.org/release/ | sed -n 's|.*<a href="/release/\([^"]*\)">.*|\1|p' | sort -V | tail -n1);
 cd $vhosts;
 
 ## Choix version Dernière / Prod personnalisée / Beta / Alpha
