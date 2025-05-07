@@ -1,10 +1,12 @@
-#/bin/bash
+#!/bin/bash
 
-extensions=$(wp --allow-root plugin list --status=active --format=csv --field=name)
+extensions=$(php -d memory_limit=512M $(which wp) --allow-root plugin list --status=active --format=csv --field=name)
 if [ -z "$extensions" ]; then
     echo -e "${BLUE}[ INFO ]${NC} Pas d'extension à désactiver"
     exit 0
 fi
+
+echo $extensions
 
 good_display()
 {
@@ -28,6 +30,5 @@ good_display()
         fi
     done
 }
-
-wp --allow-root plugin deactivate "$extensions" 2>&1 | good_display
+php -d memory_limit=512M $(which wp) --allow-root plugin deactivate ajax-search-pro
 # echo -e "${GREEN}[ SUCCÈS ]$NC fini !"

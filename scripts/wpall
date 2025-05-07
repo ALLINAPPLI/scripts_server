@@ -1,6 +1,6 @@
-#/bin/bash
+#!/bin/bash
 
-extensions=$(wp --allow-root plugin list --status=inactive --format=csv --field=name)
+extensions=$(php -d memory_limit=512M $(which wp) --allow-root plugin list --status=inactive --format=csv --field=name)
 if [ -z "$extensions" ]; then
     echo -e "${BLUE}[ INFO ]${NC} Pas d'extension à activer"
     exit 0
@@ -28,6 +28,5 @@ good_display()
         fi
     done
 }
-
-wp --allow-root plugin activate "$extensions" | good_display
+php -d memory_limit=512M $(which wp) --allow-root plugin activate $extensions | good_display
 echo -e "${GREEN}[ SUCCÈS ]${NC} fini !"
