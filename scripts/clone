@@ -203,5 +203,5 @@ end=$(date +%s)
 format_end=$(date +"%Y-%m-%d %H:%M:%S")
 elapsed=$(echo "$end - $start" | bc)
 echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕒 Fin de l'opération : ${format_end}"
-echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕔 Durée totale de l'opération : ${elapsed} secondes"
+echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕔 Durée totale de l'opération : ${elapsed} secondes ${NC}"
 cd $vhosts
