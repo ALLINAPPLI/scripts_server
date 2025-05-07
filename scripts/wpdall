@@ -1,9 +1,23 @@
 #!/bin/bash
 
-extensions=$(php -d memory_limit=512M $(which wp) --allow-root plugin list --status=active --format=csv --field=name)
+if [ "$1" = "--cancel" ]; then
+	exec wpall --list "previous_wpdall"
+	exit $?
+fi
+
+if [ "$1" = "--list" ] && [ -n "$2" ]; then
+	extensions=$(cat "$2")
+else
+	extensions=$(php -d memory_limit=512M $(which wp) --allow-root plugin list --status=active --format=csv --field=name)
+fi
+
 if [ -z "$extensions" ]; then
     echo -e "${BLUE}[ INFO ]${NC} Pas d'extension à désactiver"
     exit 0
+fi
+
+if [ -e "previous_wpdall" ]; then
+	rm  "previous_wpdall"
 fi
 
 good_display()
@@ -18,6 +32,7 @@ good_display()
         if [[ "$line" =~ \'(.*)\' ]]; then
             local plugin="${BASH_REMATCH[1]}"
             echo -e "${GREEN}[ SUCCÈS ]${NC} désactivation de ${PURPLE}${plugin}${NC}"
+            echo "$plugin" >> "previous_wpdall"
             continue
         fi
 
