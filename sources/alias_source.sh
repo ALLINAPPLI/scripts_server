@@ -56,7 +56,7 @@ alias wpi="wp plugin install "$1" --allow-root --activate"
 alias bashrc="nano ~/.bashrc"
 alias mbashrc="micro ~/.bashrc"
 alias saverc="source ~/.bashrc"
-alias aliass="format_aliases.sh ~/.aliases.txt"
+alias aliass="format_aliases.sh $CUSTOM_DIR/includes/alias.txt"
 alias m="micro"
 
 
