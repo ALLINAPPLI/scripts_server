@@ -6,8 +6,6 @@ if [ -z "$extensions" ]; then
     exit 0
 fi
 
-echo $extensions
-
 good_display()
 {
     while read -r line; do
@@ -30,5 +28,5 @@ good_display()
         fi
     done
 }
-php -d memory_limit=512M $(which wp) --allow-root plugin deactivate ajax-search-pro
+php -d memory_limit=512M $(which wp) --allow-root plugin deactivate $extensions | good_display
 # echo -e "${GREEN}[ SUCCÈS ]$NC fini !"
