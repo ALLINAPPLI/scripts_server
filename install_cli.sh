@@ -19,10 +19,12 @@ test -e /etc/my_common/officialbin || {
 path_bin=/etc/my_common/officialbin
 
 if ! which php > /dev/null 2>&1 ; then
+	echo "liaison de PHP "
     rm -f $path_bin/php > /dev/null 2>&1
     php_bin=$(ls /opt/plesk/php | sort -r | head -n 1)
     echo bin : $php_bin
     ln -s /opt/plesk/php/$php_bin/bin/php $path_bin/php
+    echo "PHP lié !"
 fi
 
 if [ ! -e "$path_bin/cv" ]; then
@@ -42,18 +44,26 @@ fi
 
 if [ ! -e "$path_bin/civix" ]; then
     echo "➡️ Installation de civix-cli..."
-	sudo curl -LsS "https://download.civicrm.org/civix/civix.phar" -o "/usr/local/bin/civix"
-	sudo chmod +x "/usr/local/bin/civix"
-    echo "✅ wp-cli installé dans $path_bin."
+	sudo curl -LsS "https://download.civicrm.org/civix/civix.phar" -o "$path_bin/civix"
+	sudo chmod +x "$path_bin/civix"
+    echo "✅ civix-cli installé dans $path_bin."
 fi
 
 if [ ! -e "$path_bin/drush" ]; then
     if command -v composer &> /dev/null; then
         echo "➡️ Installation de drush via Composer..."
-        composer global require drush/drush
+        composer global require drush/drush:"8.4.11"
         drush_path=$(composer global config home)/vendor/bin/drush;
         chmod +x $drush_path
-        ln -s $drush_path /etc/my_common/officialbin/drush
+        # ln -s $drush_path /etc/my_common/officialbin/drush
+        echo -e '#!/bin/bash\n'\
+        'for f in $(env | grep ^BASH_FUNC_ | cut -d= -f1); do\n'\
+        '    fname="${f#BASH_FUNC_}"\n'\
+        '    fname="${fname%%%%}"\n'\
+        '    unset -f "$fname" 2>/dev/null\n'\
+        'done\n'\
+        'exec ~/.config/composer/vendor/bin/drush "$@"\n' > /etc/my_common/officialbin/drush
+        chmod 755 /etc/my_common/officialbin/drush
         echo "✅ drush installé dans /etc/my_common/officialbin."
     else
         echo "🚨 Composer n'est pas installé. Impossible d'installer drush."
