@@ -73,12 +73,12 @@ echo "Alpha (a) ?";
 read civi_type_version
 
 
-set_maintenance_mode $instance $cms_instance
 
 ## Choix version
 case $civi_type_version in
         "d")
             civi_version="$last_version"
+			set_maintenance_mode $instance $cms_instance
 
             if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
                 updateCivicrm civi_folder civi_version
@@ -93,6 +93,7 @@ case $civi_type_version in
         "p")
             echo "Choisissez la version que vous souhaitez installer (X.YY.Z)  ?"
             read civi_version
+           	set_maintenance_mode $instance $cms_instance
 
             if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
                 updateCivicrm civi_folder civi_version
@@ -105,15 +106,18 @@ case $civi_type_version in
             ;; 
 
         "b")
-            updateCivicrm civi_folder 
+            set_maintenance_mode $instance $cms_instance
+		    updateCivicrm civi_folder 
             ;;
 
         "a")
+            set_maintenance_mode $instance $cms_instance
             updateCivicrm civi_folder
             ;;
 
 		*)
 			echo "Choix incorrect"
+			exit 1
 			;;
 esac
 
