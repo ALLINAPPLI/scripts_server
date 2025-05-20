@@ -148,11 +148,11 @@ majValeursCivicrm_Drupal() {
     fi
     cd $vhosts/$folder_destination/httpdocs/sites/default/
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source/|https://$folder_destination/|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://www.$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source/|https://$folder_destination/|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://www.$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
     cd $vhosts 
 }
 
@@ -163,9 +163,9 @@ majValeurs_Wordpress() {
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_NAME', '$mysql_source_database'|'DB_NAME', '$mysql_destination_database'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
-    [[ -f "wp-config.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" wp-config.php
-    [[ -f "wp-config.php" ]] && sed -i "s|'https://www.$folder_source'|'https://www.$folder_destination'|g" wp-config.php
-    [[ -f "wp-config.php" ]] && sed -i "s|'www.$folder_source'|'www.$folder_destination'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'https://www.$folder_source'|'https://www.$folder_destination'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'www.$folder_source'|'www.$folder_destination'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
  
     ## parlemonde.org (modification de deux variables de plus sur wp-config.php) 
@@ -196,13 +196,13 @@ majValeursCivicrm_Wordpress() {
 
     cd $vhosts/$folder_destination/httpdocs/wp-content/uploads/civicrm
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
     # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_mdp|$mysql_destination_mdp|g" civicrm.settings.php
     # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_user|$mysql_destination_user|g" civicrm.settings.php
     # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_database|$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
     cd $vhosts
 }
 
@@ -216,10 +216,10 @@ maj_valeur_civicrm_settings_php()
 
     cd $file_path
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
 }
 
 ## Vidage de l'instance destination
