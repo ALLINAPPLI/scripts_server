@@ -1,0 +1,11 @@
+#!/bin/bash
+
+if [ ! -e ./nextcloud/config/config.php ]; then
+	echo config.php not found at $(pwd)/nextcloud/config/config.php
+	exit 1
+fi
+
+owner_user=$(stat -c %U ./nextcloud/config/config.php || exit 1)
+php_version='8.1'
+
+sudo -u $owner_user /opt/plesk/php/$php_version/bin/php ./nextcloud/occ "$@"
