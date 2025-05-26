@@ -47,15 +47,38 @@ source "$CUSTOM_DIR/includes/functions.sh";
 echo -e "${YELLOW}=============================================${NC}";
 
 
-# Selection via whiptail
-folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+while getopts "s:d:" opt; do
+  case $opt in
+    s)
+      folder_source="$OPTARG"
+      ;;
+    d)
+      folder_destination="$OPTARG"
+      ;;
+    \?)
+      echo "Usage: $0 -s <name> -d <file>"
+      exit 1
+      ;;
+  esac
+done
+
+echo "Nom -s : $NAME"
+echo "Nom -d : $FILE"
+
+
+
+if [ -z "${folder_source}"]; then
+	folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+fi
 if [ -z "$folder_source" ]; then
     echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
     exit 1;
 fi
 
 ## Choix de l'instance destination
-folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_destination" ]; then
+	folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+fi
 if [ -z "$folder_destination" ]; then
     echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
     exit 1;
