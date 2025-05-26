@@ -1,0 +1,40 @@
+#!/bin/bash
+
+echo "> quel nom de domaine pour le site que vous voulez créer "
+read  site_to_create
+
+password='Am@z1ng_P@ssw0rd'
+
+# adduser appli.in_user --password "Am@z1ng_P@ssw0rd"
+plesk bin subscription --create "$site_to_create" -service-plan 'Default Domain' -ip "2001:8d8:1800:86cb::1","217.160.69.85" -login "${site_to_create}_user" -passwd "$password" -owner "contact@all-in-appli.com"
+plesk bin site -u "$site_to_create" -status enabled
+plesk bin site --on "$site_to_create"
+
+php_handler=$(plesk bin php_handler --list | grep fpm | grep enabled | grep -v dedicated | sort | tail -n 1 | awk '{print $1}')
+plesk bin domain -u $site_to_create -php_handler_id $php_handler
+
+domain_id=$(mysql -uadmin -p`cat /etc/psa/.psa.shadow` psa -e "select id from domains where name='$site_to_create';" | tail -n 1)
+plesk ext wp-toolkit --install -domain-id "$domain_id" -path / -title "$site_to_create" -admin-user "admin"  -admin-password "$password" -admin-email "dev@all-in-appli.com"
+
+
+
+echo "que voulez vous installer ?"
+echo ">> w: Wordpress"
+echo ">> s: civicrm standalone"
+echo ">> any other option will let you clone from any other instance in the server"
+read version
+
+if [ $version = "w" ]; then
+	source="install.all-in-appli.com"
+fi
+
+if [ $version = "s" ]; then
+	source="standalone.gestad.net"
+fi
+
+cd $racine/$site_to_create/httpdocs
+db_user=$(wp config get DB_USER --allow-root)
+plesk bin database --update-dbuser "$db_user" -passwd "$password" -server localhost:3306
+wp config set DB_PASSWORD "$password" --allow-root
+
+clone -d "$site_to_create" -s "$source"
