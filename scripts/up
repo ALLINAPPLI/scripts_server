@@ -122,4 +122,6 @@ case $civi_type_version in
 esac
 
 cd $vhosts
+cv upgrade:db
 unset_maintenance_mode $instance $cms_instance
+
