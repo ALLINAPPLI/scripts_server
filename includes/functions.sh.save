@@ -15,12 +15,14 @@ finduscript() {
 
 dbSize_Source() {
     echo " " ; echo -e "Taille de ${GREEN}$mysql_source_database${NC}"
+    # plesk db "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) 'Taille de la base source' FROM information_schema.TABLES WHERE table_schema = '$mysql_source_database';"
     plesk db "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base source' FROM information_schema.TABLES WHERE table_schema = '$mysql_source_database';"
     echo " "
 }
 
 dbSize_Destination() {
     echo " " ; echo -e "Taille de ${GREEN}$mysql_destination_database${NC}"
+    # plesk db "SELECT ROUND(SUM(data_length + index_length) / 1024 / 1024, 2) 'Taille de la base destination' FROM information_schema.TABLES WHERE table_schema = '$mysql_destination_database';"
     plesk db "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base destination' FROM information_schema.TABLES WHERE table_schema = '$mysql_destination_database';"
     echo " "
 }
@@ -44,6 +46,12 @@ getDrupalID_Source() {
 
 getStandaloneID_Source() {
     echo "Pas encore fonctionnel"
+    # cd $vhosts/$folder_source/httpdocs/private
+    # mysql_source_database=`grep -oP "(?<=DB_NAME', ').*(?=')" wp-config.php`  
+    # mysql_source_user=`grep -oP "(?<=DB_USER', ').*(?=')" wp-config.php`
+    # mysql_source_mdp=`grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php`
+    # cd $vhosts
+    # Récupération de CIVICRM_DSL - Identifiant MDP et BDD
     exit 0
 }
 
@@ -94,14 +102,15 @@ remplacementURL_BDD() {
     if [ -f "$mysql_source_database.sql" ]; then 
         echo -e "${BLUE}[ INFO ]${NC} Remplacement des URL de ${GREEN}$folder_source${NC} par ${GREEN}$folder_destination${NC} ..."
         sed -i "s/DEFINER=[^*]*\*/\*/g" "$mysql_source_database.sql"
-        ## Parcours et modification des URL
-        local folder_source_escaped=${folder_source//./\\.}
-        cat $mysql_source_database.sql \
-        | sed "s|$folder_source_escaped|$folder_destination|g"\
-        | sed "s|www.$folder_source|$folder_destination|g"\
-        > $mysql_source_database.sql.tmp
-        mv $mysql_source_database.sql.tmp $mysql_source_database.sql
 
+        ## Parcours et modification des URL
+        sed -i "s/`echo $folder_source`/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/https:\/\/`echo $folder_source`/https:\/\/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/http:\/\/`echo $folder_source`/https:\/\/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/https:\/\/www.`echo $folder_source`/https:\/\/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/http:\/\/www.`echo $folder_source`/https:\/\/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/www.`echo $folder_source`/`echo $folder_destination`/g" $mysql_source_database.sql
+        sed -i "s/\/vhosts\/`echo $folder_source`/\/vhosts\/`echo $folder_destination`/g" $mysql_source_database.sql
 
         ## Spécifique instance Parlemonde et ses sous-domaines : prof.parlemonde.org - mediateurs.parlemonde.org - familles.parlemonde.org     
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/https:\/\/prof.`echo $folder_source`/https:\/\/prof.`echo $folder_destination`/g" $mysql_source_database.sql 
@@ -140,6 +149,10 @@ majValeursCivicrm_Drupal() {
     cd $vhosts/$folder_destination/httpdocs/sites/default/
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source/|https://$folder_destination/|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|'https://www.$folder_source'|'https://$folder_destination'|g" civicrm.settings.php
     cd $vhosts 
 }
 
@@ -150,8 +163,16 @@ majValeurs_Wordpress() {
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_NAME', '$mysql_source_database'|'DB_NAME', '$mysql_destination_database'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'https://$folder_source'|'https://$folder_destination'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'https://www.$folder_source'|'https://www.$folder_destination'|g" wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'www.$folder_source'|'www.$folder_destination'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
-     cd $vhosts
+ 
+    ## parlemonde.org (modification de deux variables de plus sur wp-config.php) 
+    # [[ -f "wp-config.php" ]] && sed -i "s/define('DOMAIN_CURRENT_SITE', '`echo $folder_source`');/define('DOMAIN_CURRENT_SITE', '`echo $folder_destination`');/g" wp-config.php ##109 sans www sans espace
+    # [[ -f "wp-config.php" ]] && sed -i "s/define( 'DOMAIN_CURRENT_SITE', '`echo $folder_source`' );/define( 'DOMAIN_CURRENT_SITE', '`echo $folder_destination`' );/g" wp-config.php ##109 sans www avec espace
+    # [[ -f "wp-config.php" ]] && sed -i "s/define( 'NOBLOGREDIRECT', 'https:\/\/www.`echo $folder_source`' );/define( 'NOBLOGREDIRECT', 'https:\/\/`echo $folder_destination`' );/g" wp-config.php 
+    cd $vhosts
 }
 
 ## Recherche de WordFence pour WordPress
@@ -176,6 +197,12 @@ majValeursCivicrm_Wordpress() {
     cd $vhosts/$folder_destination/httpdocs/wp-content/uploads/civicrm
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_mdp|$mysql_destination_mdp|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_user|$mysql_destination_user|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|$mysql_source_database|$mysql_destination_database|g" civicrm.settings.php
     cd $vhosts
 }
 
@@ -190,6 +217,9 @@ maj_valeur_civicrm_settings_php()
     cd $file_path
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|vhosts/$folder_source|vhosts/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://$folder_source|https:\/\/$folder_destination|g" civicrm.settings.php 
+    # [[ -f "civicrm.settings.php" ]] && sed -i "s|https://www.$folder_source|https://$folder_destination|g" civicrm.settings.php
 }
 
 ## Vidage de l'instance destination

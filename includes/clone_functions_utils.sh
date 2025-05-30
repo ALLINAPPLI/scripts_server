@@ -66,6 +66,7 @@ get_instance_cms ()
     test -e $racine/$1/httpdocs/wp-config.php && cms_instance="wordpress";
     test -e $racine/$1/httpdocs/sites/default/settings.php && cms_instance="drupal";
     test -e $racine/$1/httpdocs/private/civicrm.settings.php && cms_instance="standalone";
+    test -e $racine/$1/httpdocs/settings.php && cms_instance="backdrop"
 
     case "$cms_instance" in
         wordpress) {
@@ -88,6 +89,14 @@ get_instance_cms ()
                 mysql_user="${BASH_REMATCH[1]}" && \
                 mysql_mdp="${BASH_REMATCH[2]}" && \
                 mysql_database="${BASH_REMATCH[4]}"
+        };;
+        backdrop){
+        	cd $racine/$1/httpdocs
+        	credentials_and_db="${url#mysql://}"; creds="${credentials_and_db%@*}"
+        	# Extraire la partie après @ (host/bdd), puis juste le bdd
+        	bdd="${credentials_and_db#*@}"; bdd="${bdd#*/}"
+        	# Séparer user et mdp
+        	user="${creds%%:*}"; mdp="${creds#*:}"
         };;
         *)
             echo "No CMS !" >&2;
