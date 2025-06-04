@@ -6,29 +6,27 @@ source "/$CUSTOM_DIR/sources/cv_source.sh"
 function cvgc() {
     instance=$(getplesksite) 
     testCMS
+    local path_ext=""
 
     if [ "$cms_instance" == "wordpress" ]; then 
-        cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext
+        path_ext=$racine/$instance/httpdocs/wp-content/uploads/civicrm/ext
     fi
     if [ "$cms_instance" == "drupal" ]; then
-        cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext
+        path_ext=$racine/$instance/httpdocs/sites/default/files/civicrm/ext
     fi
     if [ "$cms_instance" == "standalone" ]; then
-        cd $racine/$instance/httpdocs/ext
+        path_ext=$racine/$instance/httpdocs/ext
     fi
+
+    cd "$path_ext"
 
     input="$1"
     extension="${input##*/}"
     extension="${extension%.git}"
-    echo "$extension";
-
     if [ -d "$extension" ]; then
-        echo -e "${YELLOW}[WARNING]${NC} Attention, l'extension semble déjà être présente...";
-        read -p "Continuer quand même ? (O/N)" to_continue;
-        to_continue_normalized=$(echo "$to_continue" | tr '[:upper:]' '[:lower:]')
-        if [[ "$to_continue_normalized" != "o" && "$to_continue_normalized" != "oui" && "$to_continue_normalized" != "y" && "$to_continue_normalized" != "yes" ]]; then
-            exit 0;
-        fi
+        echo -e "${YELLOW}[ATTENTION]${NC} L'extension semble déjà être présente dans : $path_ext";
+        echo -e "${BLUE}[ INFO ]${NC} Vous pouvez la mettre à jour directement via la commande ${PURPLE}cvgp${NC} !";
+        return 1;
     fi
     git clone "$1"
 
