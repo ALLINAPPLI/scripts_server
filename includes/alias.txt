@@ -6,14 +6,12 @@ cl    : clear
 impots: cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
 cnec : envoi du rapport pour la création des comptes web pour le CNEC pour Make
 
-
 === Manipulation globale d'instance ===
-backup : sauvegarde d'une instance 
+backup : Sauvegarde une instance 
 clone : Lancement du script de clonage d'instances 
 clonebdd : Lancement du script de clonage de base de données 
 remp  : Lancement du script de remplacement de valeurs dans base de données 
 up    : Lancement du script civi-update.sh, pour la mise a jour de versions CiviCRM de l'instance que l'on souhaite 
-cvup  : Mise à jour de la BDD CiviCRM de l'instance
 vcv   : Affichage de toute les instances avec leur version de CiviCRM et PHP
 vcms  : Affichage de toute les instances avec leur version de CMS et PHP
 
@@ -24,30 +22,37 @@ listd  : Lister les extensions desinstallées
 listu  : Lister les extensions supprimées
 listup : Lister les extensions installées et mettables à jour
 
-=== Manipuler des extensions CiviCRM ===
+=== Gérer les extensions CiviCRM d'une instance ===
 en    : Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
 dis   : Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
 un    : Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dosser extensions 
 cvgc  : git clone && activation de l'extension CiviCRM 
 cvgp  : git pull extension CiviCRM déjà clonée
 
-=== Manipulation des extensions CiviCRM ===
-cvf   : Vidage du cache de CiviCRM 
-cvff  : Full flush, Vidage du cache de CiviCRM + reconstruit les déclencheurs, plus lent mais plus lent que cvf
-dll   : Installation et activation d'une ou plusieurs extensions CiviCRM 
-cvpatch : patch du core de CiviCRM, depuis github
+=== Gérer une instance CiviCRM ===
+cvup  : Mise à jour de la BDD CiviCRM de l'instance
+cvf   : Vidage simple du cache de CiviCRM 
+cvff  : Full flush, Vidage du cache de CiviCRM + reconstruit les déclencheurs, plus lent mais plus profond que cvf
+dll   : Installation et activation d'une ou plusieurs extensions CiviCRM
+cvpatch : patch du core de CiviCRM, depuis Github
 
-=== Manipulation des extensions Wordpress ===
+=== Gére les extensions Wordpress d'une instance ===
 wpgc  : git clone && activation de l'extension Wordpress
 wpgp  : git pull d'une extension Wordpress
-wpi   : Installer un plugin Wordpress
-wpa   : Activer un plugin Wordpress
-wpd   : Désactiver un plugin Wordpress
-wpu   : Désinstaller un plugin Wordpress
-wpf   : Vider le cache Wordpress
+wpi   : Installer une extension Wordpress
+wpa   : Activer une extension Wordpress
+wpd   : Désactiver une extension Wordpress
+wpu   : Désinstaller une extension Wordpress
 wpup  : Mettre à jour une extension Wordpress
-wpdeb : active le mod debug 
-wpudeb: desactive le mode débug
+wpall : Activer toutes les extensions Wordpress
+wpall --cancel : annuler l'activation de toutes les extensions Wordpress
+wpdall : Désactiver toutes les extensions Wordpress
+wpdall --cancel : Annuler la désactivation de toutes les extensions Wordpres
+
+=== Gérer une instance Wordpress ===
+wpf   : Vider le cache Wordpress
+wpdeb : Activer le mod debug 
+wpudeb : Désactiver le mode debug
 
 === Plesk utils ===
 rep   : Lancement de la commande plesk-repair sur l'instance où l'on est placé
@@ -58,7 +63,6 @@ getplesksite : Récuperation de l'instance où l'on est placé
 bashrc : Acceder au fichier .bashrc via nano 
 mbashrc : Acceder au fichier .bashrc via micro 
 saverc : Sauvegarder les modifications faites au fichier .bashrc
-scripts : pour se placer là où les scripts shell sont stockés
+maliass : Éditer ce fichier de liste des alias
 aliass : Alias qui affiche uniquement les aliases que l'on a créés
-alias  : commande qui affiche nos Alias (sans les fonctions) ainsi que les Alias UNIX déjà existants
-
+alias  : commande qui affiche nos alias (sans les fonctions) ainsi que les Alias UNIX déjà existants

@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 source "/$CUSTOM_DIR/sources/utils.sh"
 source "/$CUSTOM_DIR/sources/cv_source.sh"
 
@@ -7,41 +7,36 @@ function cvgc() {
     instance=$(getplesksite) 
     testCMS
 
-    while [ "$cms_instance" == "wordpress" ]; do 
-        cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext && git clone "$1" # git clone sur le repertoire ext
-        extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+    if [ "$cms_instance" == "wordpress" ]; then 
+        cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext
+    fi
+    if [ "$cms_instance" == "drupal" ]; then
+        cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext
+    fi
+    if [ "$cms_instance" == "standalone" ]; then
+        cd $racine/$instance/httpdocs/ext
+    fi
 
-        #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
-        extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
-        ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
-        cv en "$extracted_string" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été installée"
-        break
-    done
+    input="$1"
+    extension="${input##*/}"
+    extension="${extension%.git}"
+    echo "$extension";
 
-    while [ "$cms_instance" == "drupal" ]; do 
-        cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext && git clone "$1" # git clone sur le repertoire ext
-        extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
+    if [ -d "$extension" ]; then
+        echo -e "${YELLOW}[WARNING]${NC} Attention, l'extension semble déjà être présente...";
+        read -p "Continuer quand même ? (O/N)" to_continue;
+        to_continue_normalized=$(echo "$to_continue" | tr '[:upper:]' '[:lower:]')
+        if [[ "$to_continue_normalized" != "o" && "$to_continue_normalized" != "oui" && "$to_continue_normalized" != "y" && "$to_continue_normalized" != "yes" ]]; then
+            exit 0;
+        fi
+    fi
+    git clone "$1"
 
-        #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
-        extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
-        ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
-        cv en "$extracted_string" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été installée"
-        break
-    done
-
-    while [ "$cms_instance" == "standalone" ]; do 
-        cd $racine/$instance/httpdocs/ext && git clone "$1" # git clone sur le repertoire ext
-        extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
-
-        #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
-        extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
-        ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
-        cv en "$extracted_string" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été installée"
-        break
-    done
+    #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
+    extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
+    ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
+    cv en "$extracted_string" && cv updb && rep
+    echo -e "L'extension \033[32m$extension\033[0m a été installée"
     rep
 }
 

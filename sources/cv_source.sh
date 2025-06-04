@@ -117,28 +117,22 @@ cvpatch() {
     select_and_testCMS
     echo "$instance"
 
-    while [ "$cms_instance" == "wordpress" ]
-        do
+    if [ "$cms_instance" == "wordpress" ]; then
         cd $racine/$instance/httpdocs/wp-content/plugins/civicrm/civicrm/
         apply_p
-        break
-    done
-        
-    while [ "$cms_instance" == "drupal" ]
-        do
+	fi
+	        
+    if [ "$cms_instance" == "drupal" ]; then
         cd $racine/$instance/httpdocs/sites/all/modules/civicrm/
         apply_p
         rm ${numero_variable}.diff
-        break
-    done
+   	fi
 
-    while [ "$cms_instance" == "standalone" ]
-        do
+    if [ "$cms_instance" == "standalone" ]; then
         cd $racine/$instance/httpdocs/core
         apply_p
         rm ${numero_variable}.diff
-        break
-    done
+    fi
     cv flush && rep
     #rm $file_diff
 }

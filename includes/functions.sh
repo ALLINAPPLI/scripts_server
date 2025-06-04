@@ -149,7 +149,8 @@ majValeurs_Wordpress() {
     [[ -f "wp-config.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" wp-config.php    
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_NAME', '$mysql_source_database'|'DB_NAME', '$mysql_destination_database'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
-    [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
+    [[ -f "wp-config.php" ]] && replace "$mysql_source_mdp" "$mysql_destination_mdp" -- wp-config.php
+    # [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
      cd $vhosts
 }

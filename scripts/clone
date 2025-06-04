@@ -67,7 +67,7 @@ echo "Nom -d : $FILE"
 
 
 
-if [ -z "${folder_source}"]; then
+if [ -z "${folder_source}" ]; then
 	folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
 fi
 if [ -z "$folder_source" ]; then
