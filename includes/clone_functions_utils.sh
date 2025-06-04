@@ -60,9 +60,9 @@ get_instance_cms ()
         echo -e "${RED}[ ERREUR ]${NC} Vous devez donner une instance en parametre" >&2;
         exit 1
     fi
-    cms_instance=''
-    mysql_database=''
-    mysql_user=''
+    local cms_instance=''
+    local mysql_database=''
+    local mysql_user=''
     test -e $racine/$1/httpdocs/wp-config.php && cms_instance="wordpress";
     test -e $racine/$1/httpdocs/sites/default/settings.php && cms_instance="drupal";
     test -e $racine/$1/httpdocs/private/civicrm.settings.php && cms_instance="standalone";
@@ -92,11 +92,17 @@ get_instance_cms ()
         };;
         backdrop){
         	cd $racine/$1/httpdocs
-        	credentials_and_db="${url#mysql://}"; creds="${credentials_and_db%@*}"
-        	# Extraire la partie après @ (host/bdd), puis juste le bdd
-        	bdd="${credentials_and_db#*@}"; bdd="${bdd#*/}"
-        	# Séparer user et mdp
-        	user="${creds%%:*}"; mdp="${creds#*:}"
+        	url=$(cat settings.php | grep "mysql://")
+        	if [ $? = 0 ]; then
+        		url=$(echo "$url" | sed -E "s/.*'([^']+)'.*/\1/")
+        		mysql_user=$(echo "$url" | sed -E 's#mysql://([^:]+):.*@\S+/.*#\1#')
+        		mysql_mdp=$(echo "$url" | sed -E 's#mysql://[^:]+:([^@]+)@\S+/.*#\1#')
+        		mysql_database=$(echo "$url" | sed -E 's#.*/([^/?]+).*#\1#')
+        	else
+        		mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+  		        mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+        		mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+        	fi
         };;
         *)
             echo "No CMS !" >&2;

@@ -53,5 +53,6 @@ if [ "$PS1" ]; then
 	}
 
 	PS1='$(color_return)[\u@\W]'$cyan'\$ \[\e[00m\]'
+	PS1='$(color_return)[\u@\W]'$cyan'\$ \[\e[00m\]'
 fi
 
