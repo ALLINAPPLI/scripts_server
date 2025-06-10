@@ -13,12 +13,22 @@ mysql_mdp=""
 
 current_site=$(basename "$(dirname "$(pwd)")")
 result="$(get_instance_cms $current_site)"
+if [ $? != 0 ]; then
+	exit 1
+fi
+
 read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 
 echo -e "${BLUE}[ INFO ] ${NC} Activation de toutes les extensions via mysql..."
-echo "UPDATE civicrm_extension SET is_active = '1' WHERE is_active LIKE '0'" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
+
+
+echo "UPDATE civicrm_extension
+      SET is_active = '1'
+      WHERE is_active LIKE '0'"\
+      | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
 
 echo -e "${BLUE}[ INFO ] ${NC} Mise à jour de la base de données"
-cv upgrade:db 2> /dev/null
+cv updb
 
 echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"

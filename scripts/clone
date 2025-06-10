@@ -178,14 +178,14 @@ fi
 start=$(date +%s)
 formated_start=$(date +"%Y-%m-%d %H:%M:%S")
 echo -e "${YELLOW}================================================${NC}" ; echo " "
-echo -e "${BLUE}[ INFO ]${NC} \033[1;34m🔄 Lancement du clonage de la base de données en arrière-plan...${NC} (🕒 début : $formated_start)"
+echo -e "${BLUE}[ INFO ]${NC} \033[1;34m-🔄- Lancement du clonage de la base de données en arrière-plan...${NC} (-🕒- début : $formated_start)"
 
 
 clone_bdd & pid_to_wait=$!
 clone_files
 modify_value_within_files
 if [ ! $pid_to_wait = "" ]; then
-    echo -e "${BLUE}[ INFO ]${NC} ⏳ En attente de la fin du clonage de la BDD..."
+    echo -e "${BLUE}[ INFO ]${NC} -⏳- En attente de la fin du clonage de la BDD..."
     wait $pid_to_wait
 fi
 
@@ -194,7 +194,7 @@ if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
     unset_maintenance_mode $folder_destination $cms_instance_source
 fi
 
-echo -e "${GREEN}[ SUCCÈS ]${NC} ✅ Clonage terminé !"
+echo -e "${GREEN}[ SUCCÈS ]${NC} -✅- Clonage terminé !"
 echo -e "${YELLOW}================================================${NC}" ; echo " "
 
 
@@ -225,6 +225,5 @@ echo -e "${GREEN}[ SUCCÈS ]${NC} Site ${GREEN}$folder_source${NC} bien cloné v
 end=$(date +%s)
 format_end=$(date +"%Y-%m-%d %H:%M:%S")
 elapsed=$(echo "$end - $start" | bc)
-echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕒 Fin de l'opération : ${format_end}"
-echo -e "${BLUE}[ INFO ]${NC} \033[1;36m🕔 Durée totale de l'opération : ${elapsed} secondes ${NC}"
-cd $vhosts
+echo -e "${BLUE}[ INFO ]${NC} \033[1;36m-🕒- Fin de l'opération : ${format_end}"
+echo -e "${BLUE}[ INFO ]${NC} \033[1;36m-🕔- Durée totale de l'opération : ${elapsed} secondes ${NC}"

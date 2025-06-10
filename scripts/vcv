@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 # this function take 2 parameter, the 1st one is the tmp file where the result of cv status is
 # and the second is the civicrm version, in case it is the standalone CMS
@@ -21,6 +21,13 @@ get_CMS()
         local val_version=$(echo "$content" | grep "drupal_value" | cut -d"'" -f2)
         echo $val_name $val_version
         return;
+    fi
+    line_content=$(echo "$content" | grep "backdrop" 2> /dev/null)
+    if [[ $? == 0 ]]; then
+    	local val_name="backdrop";
+    	local val_version=$(bee status | grep CMS |  sed 's|[[:space:]]\+| |g' | cut -d' ' -f4);
+	    echo $val_name $val_version
+    	return;
     fi
     line_content=$(echo "$content" | grep "standalone" 2> /dev/null)
     if [[ $? == 0 ]]; then
@@ -186,7 +193,7 @@ main()
     local messages=(
         "🚀  Les processus ont été lancés en arrière-plan..."
         "📡  Tous les processus sont maintenant en cours d'exécution en arrière-plan."
-        "🛠️  Processus en arrière-plan lancés. Patience, ça bosse..."
+        "🛠️   Processus en arrière-plan lancés. Patience, ça bosse..."
         "✅  Lancement des processus en arrière-plan effectué avec succès."
     )
     local random_index=$((RANDOM % ${#messages[@]}))

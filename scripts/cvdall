@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 if [ "$2" = "-help" ]; then
     echo "Disable all CiviCRM extensions"
@@ -13,9 +13,20 @@ mysql_mdp=""
 
 current_site=$(basename "$(dirname "$(pwd)")")
 result="$(get_instance_cms $current_site)"
+if [ $? != 0 ]; then
+	exit 1
+fi
 read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 
+to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
+
 echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
-echo "UPDATE civicrm_extension SET is_active = '0' WHERE is_active LIKE '1'" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+echo "UPDATE civicrm_extension
+      SET is_active = '0'
+      WHERE is_active LIKE '1'
+      AND full_name NOT IN (${to_exclude})"\
+      | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+
+cv updb
 
 echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM désactivées"

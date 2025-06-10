@@ -1,0 +1,20 @@
+#!/bin/bash
+
+main()
+{
+	 local list_site=$(plesk bin site --list)
+	 # local list_site=("sandbox.ffmns.gestad.net")
+	 local site_count=$(echo "$list_site" | wc -l)
+	 local pids
+
+	 for instance in $list_site; do
+	 	(cd $racine/$instance/httpdocs 2> /dev/null && command my_timeout -t 2 cv setting:get site_id > /dev/null 2>&1 && printf "${instance}\n") &
+	 	pids+=($!)
+	 done
+	 for pid in $pids; do
+	 	wait $pid
+	 done
+	 sleep 0.3
+}
+
+main

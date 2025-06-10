@@ -73,6 +73,12 @@ get_bdd_from_instance "$mysql_source_database" "$mysql_source_user" "$mysql_sour
 count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
 echo -e "${BLUE}[ INFO ]${NC} $count occurence(s) de ${GREEN}$ancienne_valeur${NC} trouvées dans la base"
 
+if [ "$count" = "0" ]; then
+	echo -e "${BLUE}[ INFO ]${NC} arrêt prématurer du script dû à l'absence d'occurence à remplacer";
+	rm $mysql_source_database.sql
+	exit 0
+fi
+
 # Changement de valeurs
 echo -e "${BLUE}[ INFO ]${NC} Remplacement des valeurs en cours..."
 sed -i "s|$ancienne_valeur|$nouvelle_valeur|g" "$mysql_source_database.sql"

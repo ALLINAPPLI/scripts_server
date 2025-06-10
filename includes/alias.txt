@@ -35,6 +35,9 @@ cvf   : Vidage simple du cache de CiviCRM
 cvff  : Full flush, Vidage du cache de CiviCRM + reconstruit les déclencheurs, plus lent mais plus profond que cvf
 dll   : Installation et activation d'une ou plusieurs extensions CiviCRM
 cvpatch : patch du core de CiviCRM, depuis Github
+cvdall : Désactive toutes les extensions civicrm
+cvall : Active toutes les extensions civicrm
+
 
 === Gére les extensions Wordpress d'une instance ===
 wpgc  : git clone && activation de l'extension Wordpress
