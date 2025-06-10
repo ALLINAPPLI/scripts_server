@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 version_compare()
 {
@@ -32,9 +32,10 @@ process_for_single_site()
     local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
     local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
 
-    test -e /var/www/vhosts/$1/httpdocs/wp-config.php && local cms="wordpress";
-    test -e /var/www/vhosts/$1/httpdocs/sites/default/settings.php && local cms="drupal";
-    test -e /var/www/vhosts/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
+    test -e $racine/$1/httpdocs/wp-config.php && local cms="wordpress";
+    test -e $racine/$1/httpdocs/sites/default/settings.php && local cms="drupal";
+    test -e $racine/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
+    test -e $racine/$1/httpdocs/settings.php && local cms="backdrop";
 
     [ -d "/var/www/vhosts/$1/httpdocs" ] && cd /var/www/vhosts/$1/httpdocs || {
         printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "$php_version" > "/tmp/vcms_tmp/no_dir-$1"
@@ -52,6 +53,9 @@ process_for_single_site()
             ;;
         "standalone")
             ;;
+      	"backdrop")
+      		local cms_version=$(bee status | grep CMS | sed 's|[[:space:]]\+| |g' | cut -d' ' -f4)
+      		;;
         *)
             printf "| %-44s | ${RED}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- !cms ---" ""  "$php_version" > "/tmp/vcms_tmp/no_cms-$1"
             return 1
