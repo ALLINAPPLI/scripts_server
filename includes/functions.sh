@@ -42,6 +42,14 @@ getDrupalID_Source() {
     cd $vhosts
 }
 
+getBackdropID_Source() {
+	cd $vhosts/$folder_source/httpdocs/
+    mysql_source_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+    mysql_source_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+    mysql_source_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+    cd $vhosts
+}
+
 getStandaloneID_Source() {
     echo "Pas encore fonctionnel"
     exit 0
@@ -141,6 +149,22 @@ majValeursCivicrm_Drupal() {
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
     cd $vhosts 
+}
+
+majValeur_Backdrop() {
+	cd $vhosts/$folder_destination/httpdocs/
+	[[ -f "settings.php" ]] && sed -i "s|'database' => '$mysql_source_database'|'database' => '$mysql_destination_database'|g" settings.php
+    [[ -f "settings.php" ]] && sed -i "s|'username' => '$mysql_source_user'|'username' => '$mysql_destination_user'|g" settings.php
+    [[ -f "settings.php" ]] && sed -i "s|'password' => '$mysql_source_mdp'|'password' => '$mysql_destination_mdp'|g" settings.php
+ ## [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
+    [[ -f "settings.php" ]] && sed -i "s|$base_url = 'https://$folder_source'|$base_url = 'https://$folder_destination'|g" settings.php
+
+    if [ ! -e $vhosts/$folder_destination/httpdocs/civicrm.settings.php ]; then
+        echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
+    fi
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    cd $vhosts
 }
 
 ## Test CMS - WordPress

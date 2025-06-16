@@ -150,6 +150,12 @@ modify_value_within_files()
         majValeursCivicrm_Drupal
     fi
 
+    if [ "$cms_instance_source" == "backdrop" ]; then
+    	majValeur_Backdrop
+    	majValeursCivicrm_Drupal
+    fi
+    	
+
     if [ "$cms_instance_source" == "standalone" ]; then
         maj_valeur_civicrm_settings_php "$vhosts/$folder_destination/httpdocs/private/"
     fi

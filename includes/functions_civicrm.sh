@@ -14,11 +14,13 @@ updateCivicrm(){
     # Condition d'existence ou non du plugin CiviCRM dans l'instance choisie
     [ $cms_instance == "wordpress" ] && cd $chemin_plugins_wordpress && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
     [ $cms_instance == "drupal" ] && cd $chemin_plugins_drupal && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
+    [ $cms_instance == "backdrop" ] && cd $chemin_plugins_backdrop && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
 
     # Condition pour se placer dans le bon dossier contenant les plugins, et affectation de valeurs pour toutes les variables
     [ $cms_instance == "wordpress" ] && cd $chemin_plugins_wordpress && extension="zip" && [[ -e $civicrm && -n "$(ls -A $civicrm)" ]] && echo " " 
     [ $cms_instance == "drupal" ] && cd $chemin_plugins_drupal && extension="tar.gz" && [[ -e $civicrm && -n "$(ls -A $civicrm)" ]] && echo " " 
     [ $cms_instance == "standalone" ] && cd $chemin_plugins_standalone && extension="tar.gz" && echo " " #&& [[ -e $civicrm && -n "$(ls -A $civicrm)" ]] && echo " " 
+    [ $cms_instance == "backdrop" ] && cd $chemin_plugins_backdrop && extension="tar.gz" && [[ -e $civicrm && -n "$(ls -A $civicrm)" ]] && echo " " 
 
 
     case $civi_type_version in
@@ -46,7 +48,7 @@ updateCivicrm(){
 
     if wget --spider -q $download_link; then
         echo -e ">> la version existe bien !"
-        [[ $cms_instance == "wordpress" || $cms_instance == "drupal" ]] && echo -e ">> Suppression du dossier de CiviCRM ..." && rm -rf civicrm 	
+        [[ $cms_instance == "wordpress" || $cms_instance == "drupal" || $cms_instance == "backdrop" ]] && echo -e ">> Suppression du dossier de CiviCRM ..." && rm -rf civicrm 	
         [ $cms_instance == "standalone" ] && echo -e ">> Vidage du contenu du dossier core/* ..." && rm -rf core/*
     else
         echo -e '\e[93m=======================================\033[0m'
@@ -69,6 +71,10 @@ updateCivicrm(){
     elif [ $cms_instance == "drupal" ]; then
         echo ">> Décompression de l'archive dans le dossier $chemin_plugins_drupal ..."
         cd $chemin_plugins_drupal && tar -xzf $civi_download || tar -xzf $civi_download.$un
+
+	elif [ $cms_instance == "backdrop" ]; then
+	        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_backdrop ..."
+	        cd $chemin_plugins_backdrop && tar -xzf $civi_download || tar -xzf $civi_download.$un
 
     elif [ $cms_instance == "standalone" ]; then
         echo ">> Décompression de l'archive dans le dossier $vhosts/$civi_folder/httpdocs ..."

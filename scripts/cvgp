@@ -1,4 +1,4 @@
-#/bin/bash
+#!/bin/bash
 
 source "/$CUSTOM_DIR/sources/utils.sh"
 source "/$CUSTOM_DIR/sources/cv_source.sh"
@@ -10,26 +10,25 @@ function cvgp() {
     extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
     testCMS
 
-    while [ "$cms_instance" == "wordpress" ]; do 
+    if [ "$cms_instance" == "wordpress" ]; then 
         cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
-        break
-    done
+    fi
 
-    while [ "$cms_instance" == "drupal" ]; do 
+    if [ "$cms_instance" == "drupal" ]; then
         cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
-        break
-    done
+    fi
 
-    while [ "$cms_instance" == "standalone" ]; do 
+    if [ "$cms_instance" == "standalone" ]; then
         cd $racine/$instance/httpdocs/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
-        echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
-        break
-    done
+    fi
+
+    if [ "$cms_instance" == "backdrop" ]; then
+    	cd $racine/$instance/httpdocs/modules/civicrm/ext && git pull "$1"    	    	
+    fi
+    echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
     rep
 }
 
