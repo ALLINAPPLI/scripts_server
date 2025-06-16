@@ -17,7 +17,7 @@ shopt -s expand_aliases
 #     exit 1
 # fi
 
-vhosts="/var/www/vhosts"
+vhosts="$racine"
 
 source $CUSTOM_DIR/includes/functions_civicrm.sh
 source $CUSTOM_DIR/includes/functions.sh
@@ -35,10 +35,12 @@ civi_folder=$instance
 test -e $vhosts/$civi_folder/httpdocs/sites/default/settings.php && cms_instance="drupal"
 test -e $vhosts/$civi_folder/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
 test -e $vhosts/$civi_folder/httpdocs/wp-config.php && cms_instance="wordpress"
+test -e $vhosts/$civi_folder/httpdocs/settings.php && cms_instance="backdrop"
 
 chemin_plugins_drupal="$vhosts/$civi_folder/httpdocs/sites/all/modules"  
 chemin_plugins_wordpress="$vhosts/$civi_folder/httpdocs/wp-content/plugins"  
 chemin_plugins_standalone="$vhosts/$civi_folder/httpdocs"   
+chemin_plugins_backdrop="$vhosts/$civi_folder/httpdocs/modules"
 
 if [ ! -e $chemin_plugins_wordpress ] && [ ! -e $chemin_plugins_drupal ] && [ ! -e $chemin_plugins_standalone ]; then
     echo -e '\e[93m=======================================\033[0m' 
@@ -51,11 +53,13 @@ fi
 versionCIVI_WP=$(grep "define('CIVICRM_PLUGIN_VERSION'" $chemin_plugins_wordpress/civicrm/civicrm.php 2>/dev/null | awk -F"'" '{print $4}')
 versionCIVI_DRUPAL=$(grep '<version_no>' $chemin_plugins_drupal/civicrm/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 versionCIVI_STANDALONE=$(grep '<version_no>' $chemin_plugins_standalone/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+versionCIVI_BACKDROP=$(grep '<version_no>' $chemin_plugins_backdrop/civicrm/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
 
 # Affichage de la version de CiviCRM 
-[ $cms_instance == "wordpress" ] && [ -e $chemin_plugins_wordpress/civicrm/civicrm.php ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_WP}${NC} avec ${PURPLE}Wordpress${NC}"
-[ $cms_instance == "drupal" ] && [ -e $chemin_plugins_drupal/civicrm/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_DRUPAL} avec ${PURPLE}Drupal${NC}"
-[ $cms_instance == "standalone" ] && [ -e $chemin_plugins_standalone/core/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_STANDALONE} en ${PURPLE}Standalone${NC}"
+[ $cms_instance = "wordpress" ] && [ -e $chemin_plugins_wordpress/civicrm/civicrm.php ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_WP}${NC} avec ${PURPLE}Wordpress${NC}"
+[ $cms_instance = "drupal" ] && [ -e $chemin_plugins_drupal/civicrm/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_DRUPAL} avec ${PURPLE}Drupal${NC}"
+[ $cms_instance = "standalone" ] && [ -e $chemin_plugins_standalone/core/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_STANDALONE} en ${PURPLE}Standalone${NC}"
+[ $cms_instance = "backdrop" ] && [ -e  $chemin_plugins_backdrop/civicrm/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_BACKDROP} en ${PURPLE}Backdrop${NC}"
 
 echo -e '\e[93m=============================================\033[0m';
 

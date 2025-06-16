@@ -17,6 +17,7 @@ select_and_testCMS() {
     test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
     test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
     test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
+    test -e $racine/$instance/httpdocs/settings.php && cms="backdrop"
 }
 
 ### Test CMS simple
@@ -24,26 +25,24 @@ testCMS() {
     test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
     test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
     test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
+    test -e $racine/$instance/httpdocs/settings.php && cms="backdrop"
 }
 
 fonction_test() {
     select_and_testCMS
     echo $instance
 
-    while [ "$cms_instance" == "wordpress" ]; do 
+    if [ "$cms_instance" == "wordpress" ]; then
         echo "..."
-        break
-    done
+    fi
 
-    while [ "$cms_instance" == "drupal" ]; do
+    if [ "$cms_instance" == "drupal" ]; then
         echo "..."
-        break
-    done
+    fi
 
-    while [ "$cms_instance" == "standalone" ]; do 
+    if [ "$cms_instance" == "standalone" ]; then
         echo "..."
-        break
-    done
+    fi
 }
 
 
@@ -133,6 +132,13 @@ cvpatch() {
         apply_p
         rm ${numero_variable}.diff
     fi
+
+    if [ $"cms_instance" == "backdrop" ]; then
+    	cd $racine/$instance/httpdocs/modules/civicrm/
+    	apply_p
+    	rm ${numero_variable}.diff
+    fi
+    
     cv flush && rep
     #rm $file_diff
 }

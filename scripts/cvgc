@@ -17,6 +17,9 @@ function cvgc() {
     if [ "$cms_instance" == "standalone" ]; then
         path_ext=$racine/$instance/httpdocs/ext
     fi
+    if [ "$cms_instance" == "backdrop" ]; then
+    	path_ext=$racine/$instance/httpdocs/modules/civicrm/ext
+    fi
 
     cd "$path_ext"
 
