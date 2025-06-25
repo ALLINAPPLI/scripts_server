@@ -68,7 +68,7 @@ fi
 #***  Debut remplacement valeurs BDD  ***#
 cd $vhosts/$folder_source/httpdocs;
 
-get_bdd_from_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
+get_bdd_from_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp" --skip-triggers
 
 count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
 echo -e "${BLUE}[ INFO ]${NC} $count occurence(s) de ${GREEN}$ancienne_valeur${NC} trouvées dans la base"

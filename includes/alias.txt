@@ -38,8 +38,12 @@ cvpatch : patch du core de CiviCRM, depuis Github
 cvdall : Désactive toutes les extensions civicrm
 cvall : Active toutes les extensions civicrm
 
+=== Gérer une instance Wordpress ===
+wpf   : Vider le cache de Wordpress
+wpdeb : Activer le mod debug 
+wpudeb : Désactiver le mode debug
 
-=== Gére les extensions Wordpress d'une instance ===
+=== Gérer les extensions Wordpress d'une instance ===
 wpgc  : git clone && activation de l'extension Wordpress
 wpgp  : git pull d'une extension Wordpress
 wpi   : Installer une extension Wordpress
@@ -52,10 +56,8 @@ wpall --cancel : annuler l'activation de toutes les extensions Wordpress
 wpdall : Désactiver toutes les extensions Wordpress
 wpdall --cancel : Annuler la désactivation de toutes les extensions Wordpres
 
-=== Gérer une instance Wordpress ===
-wpf   : Vider le cache Wordpress
-wpdeb : Activer le mod debug 
-wpudeb : Désactiver le mode debug
+=== Gérer une instance Backdrop ===
+beef  : Vider le cache de Backdrop
 
 === Plesk utils ===
 rep   : Lancement de la commande plesk-repair sur l'instance où l'on est placé

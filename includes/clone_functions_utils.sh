@@ -63,10 +63,13 @@ get_instance_cms ()
     local cms_instance=''
     local mysql_database=''
     local mysql_user=''
-    test -e $racine/$1/httpdocs/wp-config.php && cms_instance="wordpress";
-    test -e $racine/$1/httpdocs/sites/default/settings.php && cms_instance="drupal";
-    test -e $racine/$1/httpdocs/private/civicrm.settings.php && cms_instance="standalone";
-    test -e $racine/$1/httpdocs/settings.php && cms_instance="backdrop"
+
+    cd $racine
+
+    test -e $1/httpdocs/wp-config.php && cms_instance="wordpress";
+    test -e $1/httpdocs/sites/default/settings.php && cms_instance="drupal";
+    test -e $1/httpdocs/private/civicrm.settings.php && cms_instance="standalone";
+    test -e $1/httpdocs/settings.php && cms_instance="backdrop"
 
     case "$cms_instance" in
         wordpress) {

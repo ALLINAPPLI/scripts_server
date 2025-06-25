@@ -317,6 +317,10 @@ set_maintenance_mode() {
     if [[ "$instance_support" == "standalone" ]]; then
         cv vset core_maintenance_mode=1
     fi
+   
+    if [[ "$instance_support" == "backdrop" ]]; then
+      	bee maintenance-mode true;
+    fi
 
     cd "$current_pwd"
 }
@@ -339,6 +343,10 @@ unset_maintenance_mode() {
 
     if [[ "$instance_support" == "standalone" ]]; then
         cv vset core_maintenance_mode=0
+    fi
+
+    if [[ "$instance_support" == "backdrop" ]]; then
+    	bee maintenance-mode false;
     fi
 
     cd "$current_pwd"

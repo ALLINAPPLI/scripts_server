@@ -73,8 +73,8 @@ updateCivicrm(){
         cd $chemin_plugins_drupal && tar -xzf $civi_download || tar -xzf $civi_download.$un
 
 	elif [ $cms_instance == "backdrop" ]; then
-	        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_backdrop ..."
-	        cd $chemin_plugins_backdrop && tar -xzf $civi_download || tar -xzf $civi_download.$un
+        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_backdrop ..."
+        cd $chemin_plugins_backdrop && tar -xzf $civi_download || tar -xzf $civi_download.$un
 
     elif [ $cms_instance == "standalone" ]; then
         echo ">> Décompression de l'archive dans le dossier $vhosts/$civi_folder/httpdocs ..."
