@@ -131,77 +131,82 @@ remplacementURL_BDD() {
 
 ## Test CMS - Drupal
 majValeurs_Drupal() {
-    cd $vhosts/$folder_destination/httpdocs/sites/default/ 
+	cd $racine
+    cd $root_folder_dest/sites/default/ 
     [[ -f "settings.php" ]] && sed -i "s|'database' => '$mysql_source_database'|'database' => '$mysql_destination_database'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'username' => '$mysql_source_user'|'username' => '$mysql_destination_user'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'password' => '$mysql_source_mdp'|'password' => '$mysql_destination_mdp'|g" settings.php
  ## [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|$base_url = 'https://$folder_source'|$base_url = 'https://$folder_destination'|g" settings.php
-    cd $vhosts
+    cd $racine
 }
 
 ## Recherche de la présence de CiviCRM pour Drupal
 majValeursCivicrm_Drupal() {
-    if [ ! -e $vhosts/$folder_destination/httpdocs/sites/default/civicrm.settings.php ]; then
+	cd $racine
+    if [ ! -e $root_folder_dest/sites/default/civicrm.settings.php ]; then
         echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
     fi
-    cd $vhosts/$folder_destination/httpdocs/sites/default/
+    cd $root_folder_dest/sites/default/
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
-    cd $vhosts 
 }
 
 majValeur_Backdrop() {
-	cd $vhosts/$folder_destination/httpdocs/
+	cd $racine
+	cd $root_folder_dest
 	[[ -f "settings.php" ]] && sed -i "s|'database' => '$mysql_source_database'|'database' => '$mysql_destination_database'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'username' => '$mysql_source_user'|'username' => '$mysql_destination_user'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'password' => '$mysql_source_mdp'|'password' => '$mysql_destination_mdp'|g" settings.php
  ## [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|$base_url = 'https://$folder_source'|$base_url = 'https://$folder_destination'|g" settings.php
 
-    if [ ! -e $vhosts/$folder_destination/httpdocs/civicrm.settings.php ]; then
+    if [ ! -e $root_folder_dest/civicrm.settings.php ]; then
         echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
     fi
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
-    cd $vhosts
+	cd $racine
 }
 
 ## Test CMS - WordPress
 majValeurs_Wordpress() {
-    cd $vhosts/$folder_destination/httpdocs
+	cd $racine
+    cd $root_folder_dest
     [[ -f "wp-config.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" wp-config.php    
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_NAME', '$mysql_source_database'|'DB_NAME', '$mysql_destination_database'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
     [[ -f "wp-config.php" ]] && replace "$mysql_source_mdp" "$mysql_destination_mdp" -- wp-config.php
     # [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
-     cd $vhosts
+	cd $racine
 }
 
 ## Recherche de WordFence pour WordPress
 majValeurs_Wordfence() {
-    if [ ! -e $vhosts/$folder_destination/httpdocs/.user.ini ]; then
+	cd $racine
+    if [ ! -e $root_folder_dest/.user.ini ]; then
         echo -e "${PURPLE}[WARNING]${NC} Fichiers générés par WordFence absents"    
         return 1
     fi
-    cd $vhosts/$folder_destination/httpdocs
+    cd $root_folder_dest
     [[ -f ".user.ini" ]] && sed -i "s/\/vhosts\/`echo $folder_source`\//\/vhosts\/`echo $folder_destination`\//g" .user.ini
     [[ -f "wordfence-waf.php" ]] && sed -i "s/\/vhosts\/`echo $folder_source`\//\/vhosts\/`echo $folder_destination`\//g" wordfence-waf.php
-    cd $vhosts
+	cd $racine
 }
 
 ## Recherche de la présence de CiviCRM pour WordPress  
 majValeursCivicrm_Wordpress() {
-    if [ ! -e $vhosts/$folder_destination/httpdocs/wp-content/uploads/civicrm/civicrm.settings.php ]; then
+	cd $racine
+    if [ ! -e $root_folder_dest/wp-content/uploads/civicrm/civicrm.settings.php ]; then
         echo -e "${PURPLE}[WARNING]${NC} CiviCRM pour Wordpress absent des extensions"
         return 1
     fi
 
-    cd $vhosts/$folder_destination/httpdocs/wp-content/uploads/civicrm
+    cd $root_folder_dest/wp-content/uploads/civicrm
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
-    cd $vhosts
+	cd $racine
 }
 
 maj_valeur_civicrm_settings_php()
@@ -326,7 +331,7 @@ set_maintenance_mode() {
 get_site_root() {
 	cd $racine
 	local result=$(find -maxdepth 2 -name $1 -type d | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
-	test -d $result/httpdocs && local result="$result/httpdocs"
+	test -d "$result/httpdocs" && local result="$result/httpdocs"
 	cd - 2> /dev/null >&2
 	echo $result
 }

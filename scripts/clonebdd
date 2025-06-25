@@ -84,7 +84,6 @@ fi
 echo -e "${BLUE}[ INFO ]${NC} Démarrage du clonage"  
 echo -e '\e[93m============================================================\033[0m' ; echo " "
 #***  Debut du clonage de BDD  ***#
-cd $vhosts/$folder_destination/httpdocs
 
 # Modification des URLs dans la base de données des occurences de $folder_source vers $folder_destination 
 get_bdd_from_instance $mysql_source_database $mysql_source_user $mysql_source_mdp --skip-triggers

@@ -1,4 +1,3 @@
-
 display_db_size()
 {
     if [ $# -lt 1 ]; then
@@ -65,27 +64,29 @@ get_instance_cms ()
     local mysql_user=''
 
     cd $racine
+	local root_domain=$(get_site_root $1)
+	cd $root_domain
 
-    test -e $1/httpdocs/wp-config.php && cms_instance="wordpress";
-    test -e $1/httpdocs/sites/default/settings.php && cms_instance="drupal";
-    test -e $1/httpdocs/private/civicrm.settings.php && cms_instance="standalone";
-    test -e $1/httpdocs/settings.php && cms_instance="backdrop"
+    test -e wp-config.php && cms_instance="wordpress";
+    test -e sites/default/settings.php && cms_instance="drupal";
+    test -e private/civicrm.settings.php && cms_instance="standalone";
+    test -e settings.php && cms_instance="backdrop"
+
 
     case "$cms_instance" in
         wordpress) {
-            cd $racine/$1/httpdocs/;
             mysql_database=`grep -oP "(?<=DB_NAME', ').*(?=')" wp-config.php`;
             mysql_user=`grep -oP "(?<=DB_USER', ').*(?=')" wp-config.php`;
             mysql_mdp=`grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php`;
         };;
         drupal) {
-            cd $racine/$1/httpdocs/sites/default/;
+            cd sites/default/;
             mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
             mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
             mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
         };;
         standalone){
-            cd $racine/$1/httpdocs/private/
+            cd private/
             line=$(cat civicrm.settings.php | grep "define('CIVICRM_DSN', 'mysql" | tail -n 1)
             echo -e "${BLUE}[ INFO ]${NC} line grep: $line" >&2
             [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
@@ -94,7 +95,6 @@ get_instance_cms ()
                 mysql_database="${BASH_REMATCH[4]}"
         };;
         backdrop){
-        	cd $racine/$1/httpdocs
         	url=$(cat settings.php | grep "mysql://")
         	if [ $? = 0 ]; then
         		url=$(echo "$url" | sed -E "s/.*'([^']+)'.*/\1/")
