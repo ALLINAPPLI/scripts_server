@@ -58,7 +58,7 @@ alias mbashrc="micro ~/.bashrc"
 alias saverc="source ~/.bashrc"
 alias aliass="format_aliases.sh $CUSTOM_DIR/includes/alias.txt"
 alias m="micro"
-
+alias maliass="cd /root/document/scripts_server && micro includes/alias.txt && ./setup.sh && cd -"
 
 alias wpdeb="wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
 alias wpudeb="wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"

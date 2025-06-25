@@ -46,18 +46,21 @@ process_for_single_site()
     case "$cms" in
         "wordpress")
             local cms_version=$(wp core version --allow-root 2> /dev/null);
+            local cms="Wordpress"
             ;;
         "drupal")
             local cms_version=$(drush status 2> /dev/null | grep "Drupal version" | cut -d":" -f2);
             local cms_version=$(echo $cms_version)
+            local cms="Drupal"
             ;;
         "standalone")
             ;;
       	"backdrop")
+      		local cms="Backdrop"
       		local cms_version=$(bee status | grep CMS | sed 's|[[:space:]]\+| |g' | cut -d' ' -f4)
       		;;
         *)
-            printf "| %-44s | ${RED}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- !cms ---" ""  "$php_version" > "/tmp/vcms_tmp/no_cms-$1"
+            printf "| %-44s | ${PURPLE}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "Autre CMS" ""  "$php_version" > "/tmp/vcms_tmp/no_cms-$1"
             return 1
             ;;
     esac

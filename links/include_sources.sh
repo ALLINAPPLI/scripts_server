@@ -1,13 +1,17 @@
 #!/bin/bash
 echo "sources"
 
-if {
-    groups | grep "root" > /dev/null
-}; then
+if id -nG | grep -qw root; then
     IS_ROOT="Y"
 else 
-    exec sudo su -
-    exit $?
+	if sudo -l -n su - &>/dev/null; then
+	    exec sudo su -
+	    exit $?
+	else
+		echo -e "\e[1;31mAttention, vous n'êtes pas en mode root, certaines commandes ne fonctionneront pas.\e[0m"
+	fi
+    # exec sudo su -
+    # exit $?
 fi
 
 export PATH="$PATH:/etc/my_common/bin:/etc/my_common/officialbin"

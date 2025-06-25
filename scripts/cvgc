@@ -18,10 +18,13 @@ function cvgc() {
         path_ext=$racine/$instance/httpdocs/ext
     fi
     if [ "$cms_instance" == "backdrop" ]; then
-    	path_ext=$racine/$instance/httpdocs/modules/civicrm/ext
+    	path_ext=$racine/$instance/httpdocs/files/civicrm/ext
     fi
 
     cd "$path_ext"
+    ls $path_ext
+    pwd
+    exit 1
 
     input="$1"
     extension="${input##*/}"
@@ -36,7 +39,7 @@ function cvgc() {
     #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
     extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
     ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
-    cv en "$extracted_string" && cv updb && rep
+    cv en "$extension" && cv updb && rep
     echo -e "L'extension \033[32m$extension\033[0m a été installée"
     rep
 }

@@ -13,19 +13,17 @@ select_and_testCMS() {
         echo " "
         break;
     done
-
-    test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
-    test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
-    test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
-    test -e $racine/$instance/httpdocs/settings.php && cms="backdrop"
+	testCMS
 }
 
 ### Test CMS simple
 testCMS() {
-    test -e $racine/$instance/httpdocs/wp-config.php && cms_instance="wordpress"
-    test -e $racine/$instance/httpdocs/sites/default/settings.php && cms_instance="drupal"
-    test -e $racine/$instance/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
-    test -e $racine/$instance/httpdocs/settings.php && cms="backdrop"
+	cd $racine
+	local path=$(find -type d -name $instance)
+    test -e $path/httpdocs/wp-config.php && cms_instance="wordpress"
+    test -e $path/httpdocs/sites/default/settings.php && cms_instance="drupal"
+    test -e $path/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
+    test -e $path/httpdocs/settings.php && cms="backdrop"
 }
 
 fonction_test() {
@@ -56,7 +54,8 @@ dll() {
             cv ext:enable "$1"
             shift
     done
-    cv updb && rep
+    cv updb;
+    rep
 }
 
 ### Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
@@ -67,7 +66,8 @@ en() {
             cv ext:enable "$1"
             shift
         done
-    cv updb && rep
+    cv updb
+    rep
 }
 
 ### Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
@@ -78,7 +78,8 @@ dis() {
             cv ext:disable "$1"
             shift
         done
-    cv updb && rep
+    cv updb
+    rep
 }
 
 ### Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dossier extensions
@@ -114,29 +115,32 @@ cvff() {
 ### Script pour appliquer un patch depuis Github pour CiviCRM
 cvpatch() {
     select_and_testCMS
+   	cd $racine
     echo "$instance"
 
     if [ "$cms_instance" == "wordpress" ]; then
-        cd $racine/$instance/httpdocs/wp-content/plugins/civicrm/civicrm/
+        cd $instance/httpdocs/wp-content/plugins/civicrm/civicrm/
         apply_p
+        rm ${numero_variable}.diff
 	fi
 	        
     if [ "$cms_instance" == "drupal" ]; then
-        cd $racine/$instance/httpdocs/sites/all/modules/civicrm/
+        cd $instance/httpdocs/sites/all/modules/civicrm/
         apply_p
         rm ${numero_variable}.diff
    	fi
 
     if [ "$cms_instance" == "standalone" ]; then
-        cd $racine/$instance/httpdocs/core
+        cd $instance/httpdocs/core
         apply_p
         rm ${numero_variable}.diff
     fi
 
-    if [ $"cms_instance" == "backdrop" ]; then
-    	cd $racine/$instance/httpdocs/modules/civicrm/
+    if [ "$cms_instance" == "backdrop" ]; then
+    	cd $instance/httpdocs/modules/civicrm/
     	apply_p
     	rm ${numero_variable}.diff
+    	cd $racine/$instance/httpdocs
     fi
     
     cv flush && rep
