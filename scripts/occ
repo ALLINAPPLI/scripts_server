@@ -6,6 +6,6 @@ if [ ! -e ./nextcloud/config/config.php ]; then
 fi
 
 owner_user=$(stat -c %U ./nextcloud/config/config.php || exit 1)
-php_version='8.1'
+php_version='8.3'
 
 sudo -u $owner_user /opt/plesk/php/$php_version/bin/php ./nextcloud/occ "$@"

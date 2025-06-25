@@ -1,4 +1,5 @@
 #!/bin/bash
+source "$CUSTOM_DIR/includes/functions.sh";
 
 version_compare()
 {
@@ -32,12 +33,15 @@ process_for_single_site()
     local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
     local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
 
-    test -e $racine/$1/httpdocs/wp-config.php && local cms="wordpress";
-    test -e $racine/$1/httpdocs/sites/default/settings.php && local cms="drupal";
-    test -e $racine/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
-    test -e $racine/$1/httpdocs/settings.php && local cms="backdrop";
+	cd $racine
+	local root_folder=$(get_site_root $1)
 
-    [ -d "/var/www/vhosts/$1/httpdocs" ] && cd /var/www/vhosts/$1/httpdocs || {
+    test -e $root_folder/wp-config.php && local cms="wordpress";
+    test -e $root_folder/sites/default/settings.php && local cms="drupal";
+    test -e $root_folder/private/civicrm.settings.php && local cms="standalone";
+    test -e $root_folder/settings.php && local cms="backdrop";
+
+    [ -d "$root_folder" ] && cd $root_folder || {
         printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "$php_version" > "/tmp/vcms_tmp/no_dir-$1"
         return 1;
     }
@@ -65,7 +69,7 @@ process_for_single_site()
             ;;
     esac
 
-    local civicrm=$(find "$racine/$1/httpdocs" -name "civicrm.settings.php" -print -quit | grep -q . && echo "$GREEN" )
+    local civicrm=$(find . -name "civicrm.settings.php" -print -quit | grep -q . && echo "$GREEN" )
     local tmp_file="/tmp/vcms_tmp/$cms-$1";
     printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | \n" "$1" "$cms" "$cms_version"  "$php_version" > "$tmp_file"
 }
@@ -79,7 +83,7 @@ run_processes()
 
     # iterate on all the instance and launch the function "process_cv_status" in multiple process for parallele execution
     # and faster execution.
-    for instance in $list_site; do
+    for instance in `plesk bin site --list`; do
         (process_for_single_site $instance; echo -n "x") & #launch another process
         process_to_wait+=($!) # retrieve PID to store it in the list "process_to_wait" 
     done

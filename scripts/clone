@@ -37,9 +37,9 @@ OPTIONS=()
 for site in $sites; do OPTIONS+=("$site" ""); done
 
 
-source "$CUSTOM_DIR/includes/clone_functions_utils.sh";
 source "$CUSTOM_DIR/includes/functions.sh";
- 
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh";
+
 #################################################################
 # Récupération de la liste des domaines
 # et selection du site à cloner
@@ -118,19 +118,22 @@ if [ "$reponse1" = "o" ]; then
     display_db_size $mysql_destination_database
 fi
 
+root_folder_dest=$(get_site_root $folder_destination)
+root_folder_src=$(get_site_root $folder_source)
+
 #***  Debut clonage  ***#
 ## Partie source
 clone_files()
 {
+	cd $racine
     echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
-    cd $vhosts/$folder_source
-    tar -cf "$folder_source.tar" httpdocs
-    mv $folder_source.tar $vhosts/$folder_destination
+    cd $root_folder_src
+    tar -cf $racine/$folder_source.tar ./*
+	cd $racine
 
     echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
-    cd $vhosts/$folder_destination
-    rm -rf httpdocs
-    tar -xf "$folder_source.tar" -C $vhosts/$folder_destination 
+    rm -rf $root_folder_dest/*
+    tar -xf "$folder_source.tar" -C  $root_folder_dest
     rm $folder_source.tar
     echo -e "${GREEN}[ SUCCÈS ]${NC} Fichiers clonés !"
 }
@@ -138,7 +141,7 @@ clone_files()
 modify_value_within_files()
 {
     echo -e "${BLUE}[ INFO ]${NC} Modification des valeurs des fichiers de configuration ..."
-    cd $vhosts/$folder_destination
+    cd $racine/$root_folder_dest
     if [ "$cms_instance_source" == "wordpress" ]; then
         majValeurs_Wordpress;
         majValeurs_Wordfence;
@@ -174,6 +177,7 @@ clone_bdd()
     set_bdd_in_instance $mysql_destination_database $mysql_destination_user $mysql_destination_mdp "$mysql_source_database".sql
     echo -e "${BLUE}[ INFO ]${NC} Suppression du dossier temp_clonage destination..." && rm -rf "$tempfile" && cd $vhosts && echo " "
 }
+
 maintenance_mod=""
 echo " >> Activer le mode maintenance sur le site source $folder_source ? (O/N)"
 read maintenance_mod
@@ -218,7 +222,7 @@ fi
 
 # faire le rebuild triggers
 echo -e "${BLUE}[ INFO ]${NC} rebuilding the triggers"
-cd "$vhosts/$folder_destination/httpdocs"
+cd "$racine/$root_folder_src"
 cv api4 System.flush triggers=1 2> /dev/null > /dev/null
 if [ $? -eq 0 ]; then
     echo -e "${BLUE}[ INFO ]${NC} triggers rebuild"

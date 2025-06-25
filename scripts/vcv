@@ -1,5 +1,8 @@
 #!/bin/bash
 
+source "$CUSTOM_DIR/includes/functions.sh";
+
+
 # this function take 2 parameter, the 1st one is the tmp file where the result of cv status is
 # and the second is the civicrm version, in case it is the standalone CMS
 # it parse and get which CMS is used in the instance.
@@ -84,12 +87,16 @@ print_site_with_no_civi()
     local php_version=$3
     local php_colors=$4
 
-    test -e /var/www/vhosts/$1/httpdocs/wp-config.php && local cms="wordpress";
-    test -e /var/www/vhosts/$1/httpdocs/sites/default/settings.php && local cms="drupal";
-    test -e /var/www/vhosts/$1/httpdocs/private/civicrm.settings.php && local cms="standalone";
+	cd $racine
+	local root_folder=$(get_site_root $site)
+	
+    test -e $root_folder/wp-config.php && local cms="wordpress";
+    test -e $root_folder/sites/default/settings.php && local cms="drupal";
+    test -e $root_folder/private/civicrm.settings.php && local cms="standalone";
+    test -e $root_folder/settings.php && local cms="backdrop";
     local tmp_file="$tmp_folder/$cms-$1";
 
-    cd /var/www/vhosts/$1/httpdocs 2> /dev/null
+    cd $root_folder 2> /dev/null
     if [[ $? != 0 ]]; then
         printf "| %-44s | %-12s | %-12s | ${RED}%-12s${NC} | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "---" "$php_version" > "$tmp_file"
         return 1;
@@ -133,13 +140,19 @@ get_smarty_version()
 # main function that is launched in parallele. Display the information about 1 domain.
 process_cv_status()
 {
+	cd $racine
+	local root_folder=$(get_site_root $instance)
     if [[ $# < 1 ]]; then return 1; fi
-    cd $racine/$instance/httpdocs 2> /dev/null 
+    cd $root_folder 2> /dev/null 
     local success=$?
 
     local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
     local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
     local tmp_file="$tmp_folder/$1"
+
+	if [ $instance = "rien.all-in-appli.com" ]; then
+		echo `pwd` >&2
+	fi
 
     if [[ $success == 0 ]]; then
         command my_timeout -t 3 cv status --out=shell 2> /dev/null > $tmp_file ; success=$?
@@ -156,7 +169,7 @@ process_cv_status()
     rm "$tmp_file" 2> /dev/null;
     local tmp_file="$tmp_folder/$cms-$1";
     local smarty_version=$(get_smarty_version);
-    local smarty_color=$([ $smarty_version = "2" ] && echo "$RED")
+    local smarty_color=$([ "$smarty_version" = "2" ] && echo "$RED")
     printf "| %-44s | %-12s | %-12s | %-12s | ${php_colors}%-7s${NC} | ${smarty_color}%-7s${NC} |\n"\
             "$1"     "$cms" "$cms_ver" "$civi_version" "$php_version"  "$smarty_version" > "$tmp_file"
 }
