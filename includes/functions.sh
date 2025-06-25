@@ -289,10 +289,8 @@ importBDD_Destination() {
 remplacement_occurences_@_dest(){  
     # Export du SQL 
     sudo mysqldump --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database > $folder_destination.sql && echo "Connexion et DUMP SQL réussi"
-
     # Remplacement de chaines contenant un '@folder_destination' par '@folder_source'
     sed -i "s/@$folder_destination/@$folder_source/g" "$folder_destination.sql"
-
     # Import du SQL dans la bonne BDD
     sudo mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $folder_destination.sql && echo "Connexion et PUMP SQL réussi"
 }
@@ -317,7 +315,7 @@ set_maintenance_mode() {
     if [[ "$instance_support" == "standalone" ]]; then
         cv vset core_maintenance_mode=1
     fi
-   
+
     if [[ "$instance_support" == "backdrop" ]]; then
       	bee maintenance-mode true;
     fi
@@ -325,6 +323,13 @@ set_maintenance_mode() {
     cd "$current_pwd"
 }
 
+get_site_root() {
+	cd $racine
+	local result=$(find -maxdepth 2 -name $1 -type d | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
+	test -d $result/httpdocs && local result="$result/httpdocs"
+	cd - 2> /dev/null >&2
+	echo $result
+}
 
 unset_maintenance_mode() {
     local site="$1"
