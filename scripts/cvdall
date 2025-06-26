@@ -5,6 +5,7 @@ if [ "$2" = "-help" ]; then
     exit 0
 fi
 
+source "$CUSTOM_DIR/includes/functions.sh"
 source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
 cms_instance=""
 mysql_database=""
