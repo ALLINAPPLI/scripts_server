@@ -65,7 +65,6 @@ get_instance_cms ()
 
     cd $racine
 	local root_domain=$(get_site_root $1)
-	echo "root domain : $root_domain" >&2
 	cd "$root_domain"
 
     test -e wp-config.php && cms_instance="wordpress";

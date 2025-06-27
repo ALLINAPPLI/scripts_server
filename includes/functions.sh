@@ -334,7 +334,6 @@ get_site_root() {
 	local result=$(find -maxdepth 2 -name $1 -type d | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
 	test -d "$result/httpdocs" && result="$result/httpdocs"
 	cd $current_pwd
-	echo "result : $result" >&2
 	echo $result
 }
 
