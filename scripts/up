@@ -125,5 +125,5 @@ case $civi_type_version in
 			;;
 esac
 
-cv upgrade:db
+cv updb
 unset_maintenance_mode $instance $cms_instance
