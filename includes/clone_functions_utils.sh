@@ -88,7 +88,6 @@ get_instance_cms ()
         standalone){
             cd private/
             line=$(cat civicrm.settings.php | grep "define('CIVICRM_DSN', 'mysql" | tail -n 1)
-            echo -e "${BLUE}[ INFO ]${NC} line grep: $line" >&2
             [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
                 mysql_user="${BASH_REMATCH[1]}" && \
                 mysql_mdp="${BASH_REMATCH[2]}" && \

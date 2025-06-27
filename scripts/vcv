@@ -150,10 +150,6 @@ process_cv_status()
     local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
     local tmp_file="$tmp_folder/$1"
 
-	if [ $instance = "rien.all-in-appli.com" ]; then
-		echo `pwd` >&2
-	fi
-
     if [[ $success == 0 ]]; then
         command my_timeout -t 3 cv status --out=shell 2> /dev/null > $tmp_file ; success=$?
     fi
