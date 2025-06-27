@@ -19,7 +19,7 @@ select_and_testCMS() {
 ### Test CMS simple
 testCMS() {
 	cd $racine
-	local path=$(find -type d -name $instance)
+	local path=$(find -maxdepth 2 -type d -name $instance | grep -v .rapid-scan-db | grep -v system)
     test -e $path/httpdocs/wp-config.php && cms_instance="wordpress"
     test -e $path/httpdocs/sites/default/settings.php && cms_instance="drupal"
     test -e $path/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
