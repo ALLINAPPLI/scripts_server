@@ -329,10 +329,12 @@ set_maintenance_mode() {
 }
 
 get_site_root() {
+	local current_pwd=$(pwd)
 	cd $racine
 	local result=$(find -maxdepth 2 -name $1 -type d | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
-	test -d "$result/httpdocs" && local result="$result/httpdocs"
-	cd - 2> /dev/null >&2
+	test -d "$result/httpdocs" && result="$result/httpdocs"
+	cd $current_pwd
+	echo "result : $result" >&2
 	echo $result
 }
 

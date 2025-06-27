@@ -1,5 +1,6 @@
 #!/bin/bash
-echo "sources"
+
+echo "Custom sources called !"
 
 if id -nG | grep -qw root; then
     IS_ROOT="Y"
@@ -8,7 +9,7 @@ else
 	    exec sudo su -
 	    exit $?
 	else
-		echo -e "\e[1;31mAttention, vous n'êtes pas en mode root, certaines commandes ne fonctionneront pas.\e[0m"
+		echo -e "\e[1;31mAttention, vous n'êtes pas en mode root, certaines commandes lié à Plesk ne fonctionneront pas.\e[0m"
 	fi
     # exec sudo su -
     # exit $?
@@ -59,4 +60,3 @@ if [ "$PS1" ]; then
 	PS1='$(color_return)[\u@\W]'$cyan'\$ \[\e[00m\]'
 	PS1='$(color_return)[\u@\W]'$cyan'\$ \[\e[00m\]'
 fi
-

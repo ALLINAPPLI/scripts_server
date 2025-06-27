@@ -65,7 +65,8 @@ get_instance_cms ()
 
     cd $racine
 	local root_domain=$(get_site_root $1)
-	cd $root_domain
+	echo "root domain : $root_domain" >&2
+	cd "$root_domain"
 
     test -e wp-config.php && cms_instance="wordpress";
     test -e sites/default/settings.php && cms_instance="drupal";
