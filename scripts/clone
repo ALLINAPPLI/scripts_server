@@ -23,7 +23,7 @@
 
 
 vhosts="/var/www/vhosts" ; mysql_server="localhost:3306"
-sites=$(plesk bin site --list)
+sites=$(get_sites)
 mysql_source_database="";
 mysql_source_user="";
 mysql_source_mdp="";
