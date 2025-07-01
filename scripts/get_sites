@@ -1,0 +1,12 @@
+#!/bin/bash
+
+user_id=$(id -u)
+if [ $user_id = "0" ]; then
+	plesk bin site --list
+	exit 0
+fi
+
+cd $HOME
+
+ls ~ | grep -E '^([a-zA-Z0-9_-]+\.){2,}[a-zA-Z]{2,}$'
+basename $HOME
