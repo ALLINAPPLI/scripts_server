@@ -1,4 +1,5 @@
 === Générique utils ===
+maliass : pour éditer ce fichier
 www   : cd /var/www/vhosts
 cl    : clear
 
@@ -24,6 +25,7 @@ listup : Lister les extensions installées et mettables à jour
 
 === Gérer les extensions CiviCRM d'une instance ===
 en    : Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
+dll   : Installation et activation d'une et plusieurs extensions CiviCRM
 dis   : Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
 un    : Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dosser extensions 
 cvgc  : git clone && activation de l'extension CiviCRM 
@@ -33,7 +35,6 @@ cvgp  : git pull extension CiviCRM déjà clonée
 cvup  : Mise à jour de la BDD CiviCRM de l'instance
 cvf   : Vidage simple du cache de CiviCRM 
 cvff  : Full flush, Vidage du cache de CiviCRM + reconstruit les déclencheurs, plus lent mais plus profond que cvf
-dll   : Installation et activation d'une ou plusieurs extensions CiviCRM
 cvpatch : patch du core de CiviCRM, depuis Github
 cvdall : Désactive toutes les extensions civicrm
 cvall : Active toutes les extensions civicrm

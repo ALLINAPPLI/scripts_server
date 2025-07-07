@@ -151,7 +151,7 @@ modify_value_within_files()
 
     if [ "$cms_instance_source" == "backdrop" ]; then
     	majValeur_Backdrop
-    	majValeursCivicrm_Drupal
+    	majValeursCivicrm_Backdrop
     fi
     	
 
