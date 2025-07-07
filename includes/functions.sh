@@ -169,6 +169,18 @@ majValeur_Backdrop() {
 	cd $racine
 }
 
+## Recherche de la présence de CiviCRM pour Backdrop
+majValeursCivicrm_Backdrop() {
+	cd $racine
+    if [ ! -e $root_folder_dest/sites/default/civicrm.settings.php ]; then
+        echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
+    fi
+    cd $root_folder_dest/
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+}
+
+
 ## Test CMS - WordPress
 majValeurs_Wordpress() {
 	cd $racine

@@ -30,11 +30,16 @@ version_compare()
 
 process_for_single_site()
 {
-    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
-    local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
+	if [ "$(id -u)" -eq 0 ]; then
+	    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
+    	local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
+	fi
 
 	cd $racine
-	local root_folder=$(get_site_root $1)
+	local root_folder=$(get_site_root $1 2> /dev/null)
+	if [ $? -ne 0 ]; then
+		return 1
+	fi
 
     test -e $root_folder/wp-config.php && local cms="wordpress";
     test -e $root_folder/sites/default/settings.php && local cms="drupal";
@@ -83,7 +88,7 @@ run_processes()
 
     # iterate on all the instance and launch the function "process_cv_status" in multiple process for parallele execution
     # and faster execution.
-    for instance in `plesk bin site --list`; do
+    for instance in $(get_sites 2> /dev/null); do
         (process_for_single_site $instance; echo -n "x") & #launch another process
         process_to_wait+=($!) # retrieve PID to store it in the list "process_to_wait" 
     done
@@ -97,7 +102,7 @@ run_processes()
 
 main()
 {
-    local list_site=$(plesk bin site --list)
+    local list_site=$(get_sites)
     local site_count=$(echo "$list_site" | wc -l)
     local tmp_folder="/tmp/vcms_tmp"
     [ -d $tmp_folder ] || mkdir "$tmp_folder";

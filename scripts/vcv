@@ -141,13 +141,16 @@ get_smarty_version()
 process_cv_status()
 {
 	cd $racine
-	local root_folder=$(get_site_root $instance)
+	local root_folder=$(get_site_root $instance 2> /dev/null)
+    if [[ $? != 0 ]]; then return 1; fi
     if [[ $# < 1 ]]; then return 1; fi
     cd $root_folder 2> /dev/null 
     local success=$?
 
-    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
-    local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
+	if [ "$(id -u)" -eq 0 ]; then
+	    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
+    	local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
+    fi
     local tmp_file="$tmp_folder/$1"
 
     if [[ $success == 0 ]]; then
@@ -196,7 +199,7 @@ run_multiprocess_functions()
 # Main function, 1er appelé, elle va 
 main()
 {
-    local list_site=$(plesk bin site --list)
+    local list_site=$(get_sites)
     local site_count=$(echo "$list_site" | wc -l)
 
     local messages=(
