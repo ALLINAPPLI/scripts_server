@@ -105,6 +105,7 @@ remplacementURL_BDD() {
         ## Parcours et modification des URL
         local folder_source_escaped=${folder_source//./\\.}
         cat $mysql_source_database.sql \
+		| sed "s|$root_folder_src|$root_folder_dest|g"\
         | sed "s|$folder_source_escaped|$folder_destination|g"\
         | sed "s|www.$folder_source|$folder_destination|g"\
         > $mysql_source_database.sql.tmp
@@ -131,8 +132,8 @@ remplacementURL_BDD() {
 
 ## Test CMS - Drupal
 majValeurs_Drupal() {
-	cd $racine
-    cd $root_folder_dest/sites/default/ 
+    cd $root_folder_dest/sites/default/
+
     [[ -f "settings.php" ]] && sed -i "s|'database' => '$mysql_source_database'|'database' => '$mysql_destination_database'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'username' => '$mysql_source_user'|'username' => '$mysql_destination_user'|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|'password' => '$mysql_source_mdp'|'password' => '$mysql_destination_mdp'|g" settings.php
@@ -144,11 +145,15 @@ majValeurs_Drupal() {
 ## Recherche de la présence de CiviCRM pour Drupal
 majValeursCivicrm_Drupal() {
 	cd $racine
-    if [ ! -e $root_folder_dest/sites/default/civicrm.settings.php ]; then
+	cd $root_folder_dest
+
+    if [ ! -e ./sites/default/civicrm.settings.php ]; then
         echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
+        return
     fi
-    cd $root_folder_dest/sites/default/
+    cd ./sites/default/
     [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    [[ -f "civicrm.settings.php" ]] && sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
     [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 }
 
@@ -161,25 +166,17 @@ majValeur_Backdrop() {
  ## [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
     [[ -f "settings.php" ]] && sed -i "s|$base_url = 'https://$folder_source'|$base_url = 'https://$folder_destination'|g" settings.php
 
-    if [ ! -e $root_folder_dest/civicrm.settings.php ]; then
-        echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
+	
+    if [ ! -e civicrm.settings.php ]; then
+        echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour backdrop absent"
+       	cd $racine
+        return
     fi
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
+    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 	cd $racine
 }
-
-## Recherche de la présence de CiviCRM pour Backdrop
-majValeursCivicrm_Backdrop() {
-	cd $racine
-    if [ ! -e $root_folder_dest/sites/default/civicrm.settings.php ]; then
-        echo -e "${PURPLE}[WARNING] ${NC} CiviCRM pour Drupal absent"
-    fi
-    cd $root_folder_dest/
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
-}
-
 
 ## Test CMS - WordPress
 majValeurs_Wordpress() {
@@ -190,6 +187,8 @@ majValeurs_Wordpress() {
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
     [[ -f "wp-config.php" ]] && replace "$mysql_source_mdp" "$mysql_destination_mdp" -- wp-config.php
     # [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
+    echo "s|$root_folder_src|$root_folder_dest|g" 
+    [[ -f "wp-config.php" ]] && sed -i "s|$root_folder_src|$root_folder_dest|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
 	cd $racine
 }
@@ -216,8 +215,9 @@ majValeursCivicrm_Wordpress() {
     fi
 
     cd $root_folder_dest/wp-content/uploads/civicrm
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
+    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 	cd $racine
 }
 
@@ -230,8 +230,13 @@ maj_valeur_civicrm_settings_php()
     fi
 
     cd $file_path
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    replace \
+      "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database" \
+      "mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database" \
+      -- civicrm.settings.php
+    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
+    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 }
 
 ## Vidage de l'instance destination
@@ -343,7 +348,7 @@ set_maintenance_mode() {
 get_site_root() {
 	local current_pwd=$(pwd)
 	cd $racine
-	local result=$(find -maxdepth 2 -name $1 -type d | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
+	local result=$(find -maxdepth 2 -name $1 -type d -printf "%P\n" | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
 	test -d "$result/httpdocs" && result="$result/httpdocs"
 	cd $current_pwd
 	echo $result
