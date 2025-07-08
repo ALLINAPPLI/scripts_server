@@ -1,3 +1,5 @@
+source $CUSTOM_DIR/includes/functions.sh
+
 display_db_size()
 {
     if [ $# -lt 1 ]; then

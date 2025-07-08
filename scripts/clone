@@ -151,12 +151,12 @@ modify_value_within_files()
 
     if [ "$cms_instance_source" == "backdrop" ]; then
     	majValeur_Backdrop
-    	majValeursCivicrm_Backdrop
     fi
     	
 
     if [ "$cms_instance_source" == "standalone" ]; then
-        maj_valeur_civicrm_settings_php "$vhosts/$folder_destination/httpdocs/private/"
+    	echo "${BLUE}[ INFO ]${NC} C'est une standalone"
+        maj_valeur_civicrm_settings_php "$racine/$root_folder_dest/private/"
     fi
     echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers ont été remplacées"
 }
