@@ -1,0 +1,20 @@
+#!/bin/bash
+
+source "$CUSTOM_DIR/includes/functions.sh";
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh";
+
+
+
+path=$(pwd)
+subscription=$(echo "$path" | cut -d'/' -f5)
+second=$(echo "$path" | cut -d'/' -f6)
+
+if [ "$second" = "httpdocs" ]; then
+    folder_source="$subscription"
+else
+    folder_source="$second"
+fi
+
+result="$(get_instance_cms $folder_source)" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+mysqldump "$mysql_source_database" -u "$mysql_source_user" -p"$mysql_source_mdp"
