@@ -6,7 +6,7 @@ select_and_testCMS() {
     echo "Quelle instance choisissez vous ?"
 
     # Récupération de la liste des 
-    listSite=($(plesk bin site --list))
+    listSite=($(get_sites))
     select instance in "${listSite[@]}"; do
         echo -e '\e[93m=============================================\033[0m'
         echo -e "L'instance choisie est : \e[1;32m$instance\e[0m"
@@ -18,12 +18,17 @@ select_and_testCMS() {
 
 ### Test CMS simple
 testCMS() {
+	local prev_pwd=$(pwd)
+	
 	cd $racine
-	local path=$(find -maxdepth 2 -type d -name $instance | grep -v .rapid-scan-db | grep -v system)
-    test -e $path/httpdocs/wp-config.php && cms_instance="wordpress"
-    test -e $path/httpdocs/sites/default/settings.php && cms_instance="drupal"
-    test -e $path/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
-    test -e $path/httpdocs/settings.php && cms="backdrop"
+	instance=$(find -maxdepth 2 -type d -name $instance 2> /dev/null | grep -v .rapid-scan-db | grep -v system)
+	test -d httpdocs && cd httpdocs && instance="$instance/httpdocs"
+	cd $instance
+    test -e wp-config.php && cms_instance="wordpress"
+    test -e sites/default/settings.php && cms_instance="drupal"
+    test -e private/civicrm.settings.php && cms_instance="standalone"
+    test -e settings.php && cms="backdrop"
+    cd $prev_pwd
 }
 
 fonction_test() {
@@ -119,29 +124,29 @@ cvpatch() {
     echo "$instance"
 
     if [ "$cms_instance" == "wordpress" ]; then
-        cd $instance/httpdocs/wp-content/plugins/civicrm/civicrm/
+        cd $instance/wp-content/plugins/civicrm/civicrm/
         apply_p
         rm ${numero_variable}.diff
 	fi
 	        
     if [ "$cms_instance" == "drupal" ]; then
-        cd $instance/httpdocs/sites/all/modules/civicrm/
+        cd $instance/sites/all/modules/civicrm/
         apply_p
         rm ${numero_variable}.diff
    	fi
 
     if [ "$cms_instance" == "standalone" ]; then
-        cd $instance/httpdocs/core
+        cd $instance/core
         apply_p
         rm ${numero_variable}.diff
     fi
 
     if [ "$cms_instance" == "backdrop" ]; then
-    	cd $instance/httpdocs/modules/civicrm/
+    	cd $instance/modules/civicrm/
     	apply_p
     	rm ${numero_variable}.diff
-    	cd $racine/$instance/httpdocs
     fi
+   	cd $racine/$instance
     
     cv flush && rep
     #rm $file_diff

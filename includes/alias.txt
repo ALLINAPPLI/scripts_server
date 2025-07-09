@@ -16,6 +16,11 @@ up    : Lancement du script civi-update.sh, pour la mise a jour de versions Civi
 vcv   : Affichage de toute les instances avec leur version de CiviCRM et PHP
 vcms  : Affichage de toute les instances avec leur version de CMS et PHP
 
+=== Manipulation de base de donnée ===
+getbdd  : récupère les identifiant de la base de donnée de l'instance courante
+sql	    : ouvre le terminal SQL de l'instance courrante, peut être utilisé sous la forme sql < fichier.sql
+dump    : récupère l'intégralité de la base de donnée, si aucune direction l'affiche dans le terminal
+
 === Lister des extensions CiviCRM ===
 list   : Lister toutes les extensions présentes
 listi  : Lister les extensions installées
@@ -28,8 +33,9 @@ en    : Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans
 dll   : Installation et activation d'une et plusieurs extensions CiviCRM
 dis   : Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
 un    : Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dosser extensions 
-cvgc  : git clone && activation de l'extension CiviCRM 
+cvgc  : git clone && activation de l'extension CiviCRM
 cvgp  : git pull extension CiviCRM déjà clonée
+cvextup : mets à jour toutes les extensions civicrm
 
 === Gérer une instance CiviCRM ===
 cvup  : Mise à jour de la BDD CiviCRM de l'instance
@@ -63,7 +69,7 @@ beef  : Vider le cache de Backdrop
 === Plesk utils ===
 rep   : Lancement de la commande plesk-repair sur l'instance où l'on est placé
 repall : Lancement de la commande plesk-repair sur l'intégralité des instances
-getplesksite : Récuperation de l'instance où l'on est placé 
+getplesksite : Récuperation de l'instance où l'on est placé
 
 === Accès aux fichiers ===
 bashrc : Acceder au fichier .bashrc via nano 

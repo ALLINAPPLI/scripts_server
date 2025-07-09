@@ -10,16 +10,16 @@ function cvgc() {
     local path_ext=""
 
     if [ "$cms_instance" == "wordpress" ]; then 
-        path_ext=$racine/$instance/httpdocs/wp-content/uploads/civicrm/ext
+        path_ext=$racine/$instance/wp-content/uploads/civicrm/ext
     fi
     if [ "$cms_instance" == "drupal" ]; then
-        path_ext=$racine/$instance/httpdocs/sites/default/files/civicrm/ext
+        path_ext=$racine/$instance/sites/default/files/civicrm/ext
     fi
     if [ "$cms_instance" == "standalone" ]; then
-        path_ext=$racine/$instance/httpdocs/ext
+        path_ext=$racine/$instance/ext
     fi
     if [ "$cms_instance" == "backdrop" ]; then
-    	path_ext=$racine/$instance/httpdocs/files/civicrm/ext
+    	path_ext=$racine/$instance/files/civicrm/ext
     fi
 
     cd "$path_ext"
