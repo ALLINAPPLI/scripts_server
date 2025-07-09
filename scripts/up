@@ -85,7 +85,7 @@ case $civi_type_version in
 			set_maintenance_mode $instance $cms_instance
 
             if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                updateCivicrm civi_folder civi_version
+                updateCivicrm $civi_folder $civi_version
             else
                 echo -e '\e[93m=======================================\033[0m'
                 echo -e '\e[93m\033[31m Ce n`est pas une version connue\033[31m'
@@ -100,7 +100,7 @@ case $civi_type_version in
            	set_maintenance_mode $instance $cms_instance
 
             if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                updateCivicrm civi_folder civi_version
+                updateCivicrm $civi_folder $civi_version
             else
                 echo -e '\e[93m=======================================\033[0m'
                 echo -e '\e[93m\033[31m Ce n`est pas une version connue\033[31m'
@@ -111,12 +111,12 @@ case $civi_type_version in
 
         "b")
             set_maintenance_mode $instance $cms_instance
-		    updateCivicrm civi_folder 
+		    updateCivicrm $civi_folder 
             ;;
 
         "a")
             set_maintenance_mode $instance $cms_instance
-            updateCivicrm civi_folder
+            updateCivicrm $civi_folder
             ;;
 
 		*)

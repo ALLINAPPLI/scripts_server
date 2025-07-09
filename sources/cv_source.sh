@@ -27,7 +27,7 @@ testCMS() {
     test -e wp-config.php && cms_instance="wordpress"
     test -e sites/default/settings.php && cms_instance="drupal"
     test -e private/civicrm.settings.php && cms_instance="standalone"
-    test -e settings.php && cms="backdrop"
+    test -e settings.php && cms_instance="backdrop"
     cd $prev_pwd
 }
 
@@ -119,37 +119,39 @@ cvff() {
 
 ### Script pour appliquer un patch depuis Github pour CiviCRM
 cvpatch() {
-    select_and_testCMS
-   	cd $racine
+	local prev_pwd=$(pwd)
+    instance=$(getplesksite)
+    testCMS
     echo "$instance"
+    if [ -z "$instance" ]; then
+    	echo -e "${RED}[ERREUR]${NC} vous n'êtes pas au sein d'une instance"
+    	return 1;
+    fi
+   	cd $racine
 
     if [ "$cms_instance" == "wordpress" ]; then
+    	echo "$cms_instance !"
         cd $instance/wp-content/plugins/civicrm/civicrm/
-        apply_p
-        rm ${numero_variable}.diff
 	fi
 	        
     if [ "$cms_instance" == "drupal" ]; then
+    	echo "$cms_instance !"
         cd $instance/sites/all/modules/civicrm/
-        apply_p
-        rm ${numero_variable}.diff
    	fi
 
     if [ "$cms_instance" == "standalone" ]; then
+    	echo "$cms_instance !"
         cd $instance/core
-        apply_p
-        rm ${numero_variable}.diff
     fi
 
     if [ "$cms_instance" == "backdrop" ]; then
+    	echo "$cms_instance !"
     	cd $instance/modules/civicrm/
-    	apply_p
-    	rm ${numero_variable}.diff
     fi
-   	cd $racine/$instance
-    
+    pwd
+    apply_p
+   	cd $racine/$instance    
     cv flush && rep
+    cd $prev_pwd
     #rm $file_diff
 }
-
-

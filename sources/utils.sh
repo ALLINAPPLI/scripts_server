@@ -57,7 +57,8 @@ apply_p() {
   numero_variable=$(echo "$url" | grep -oP '(?<=/pull/).*')
   echo "Numéro du patch : $numero_variable"
 
-  wget "$url.diff" && patch -p1 < "$numero_variable.diff" && echo -e ">> [${GREEN}RÉUSSI${NC}] Patch appliqué" 
+  wget "$url.diff" && patch -p1 < "$numero_variable.diff" && echo -e ">> [${GREEN}RÉUSSI${NC}] Patch appliqué"
+  rm -f $numero_variable.diff
 
   #$file_diff="${numero_variable}.diff"
 
