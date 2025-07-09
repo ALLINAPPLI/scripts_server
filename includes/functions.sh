@@ -15,13 +15,13 @@ finduscript() {
 
 dbSize_Source() {
     echo " " ; echo -e "Taille de ${GREEN}$mysql_source_database${NC}"
-    plesk db "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base source' FROM information_schema.TABLES WHERE table_schema = '$mysql_source_database';"
+    echo "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base source' FROM information_schema.TABLES WHERE table_schema = '$mysql_source_database';" | sql
     echo " "
 }
 
 dbSize_Destination() {
     echo " " ; echo -e "Taille de ${GREEN}$mysql_destination_database${NC}"
-    plesk db "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base destination' FROM information_schema.TABLES WHERE table_schema = '$mysql_destination_database';"
+    echo "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base destination' FROM information_schema.TABLES WHERE table_schema = '$mysql_destination_database';" | sql
     echo " "
 }
 
@@ -152,9 +152,13 @@ majValeursCivicrm_Drupal() {
         return
     fi
     cd ./sites/default/
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
-    [[ -f "civicrm.settings.php" ]] && sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
+			"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
+      		-- civicrm.settings.php
+    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
+    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 }
 
 majValeur_Backdrop() {
@@ -172,7 +176,10 @@ majValeur_Backdrop() {
        	cd $racine
         return
     fi
-    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+   	replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
+		"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
+   		-- civicrm.settings.php
     sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
     sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 	cd $racine
@@ -187,7 +194,6 @@ majValeurs_Wordpress() {
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
     [[ -f "wp-config.php" ]] && replace "$mysql_source_mdp" "$mysql_destination_mdp" -- wp-config.php
     # [[ -f "wp-config.php" ]] && sed -i "s|'DB_PASSWORD', '$mysql_source_mdp'|'DB_PASSWORD', '$mysql_destination_mdp'|g" wp-config.php
-    echo "s|$root_folder_src|$root_folder_dest|g" 
     [[ -f "wp-config.php" ]] && sed -i "s|$root_folder_src|$root_folder_dest|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|$folder_source|$folder_destination|g" wp-config.php
 	cd $racine
@@ -215,7 +221,11 @@ majValeursCivicrm_Wordpress() {
     fi
 
     cd $root_folder_dest/wp-content/uploads/civicrm
-    sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
+    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+
+    replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
+			"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
+      		-- civicrm.settings.php
     sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
     sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
 	cd $racine
@@ -230,6 +240,8 @@ maj_valeur_civicrm_settings_php()
     fi
 
     cd $file_path
+    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+
     replace \
       "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database" \
       "mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database" \
@@ -262,9 +274,9 @@ vidageBDD_Source(){
     # Tentative de connexion et dump des tables sans données
     echo "SET FOREIGN_KEY_CHECKS = 0;" > ./temp_vidage.sql 
     echo -e ">> Vidage de la base de données de ${GREEN}$mysql_source_database${NC} ..."
-    sudo mysqldump --add-drop-table --no-data -u "$mysql_source_user" -p"$mysql_source_mdp" "$mysql_source_database" | grep 'DROP TABLE' >> ./temp_vidage.sql
+    mysqldump --add-drop-table --no-data -u "$mysql_source_user" -p"$mysql_source_mdp" "$mysql_source_database" | grep 'DROP TABLE' >> ./temp_vidage.sql
     echo "SET FOREIGN_KEY_CHECKS = 1;" >> ./temp_vidage.sql 
-    sudo mysql -u $mysql_source_user -p$mysql_source_mdp $mysql_source_database < ./temp_vidage.sql
+    mysql -u $mysql_source_user -p$mysql_source_mdp $mysql_source_database < ./temp_vidage.sql
     rm temp_vidage.sql ; echo " "
 }
  
@@ -280,9 +292,9 @@ vidageBDD_Destination(){
     # Tentative de connexion et dump des tables sans données
     echo "SET FOREIGN_KEY_CHECKS = 0;" > ./temp_vidage.sql 
     echo -e ">> Vidage de la base de données ${GREEN}$mysql_destination_database${NC} ..."
-    sudo mysqldump --lock-tables=false --add-drop-table --no-data -u "$mysql_destination_user" -p"$mysql_destination_mdp" "$mysql_destination_database" | grep 'DROP TABLE' >> ./temp_vidage.sql
+    mysqldump --lock-tables=false --add-drop-table --no-data -u "$mysql_destination_user" -p"$mysql_destination_mdp" "$mysql_destination_database" | grep 'DROP TABLE' >> ./temp_vidage.sql
     echo "SET FOREIGN_KEY_CHECKS = 1;" >> ./temp_vidage.sql 
-    sudo mysql -u $mysql_destination_user -p$mysql_destination_mdp $mysql_destination_database < ./temp_vidage.sql
+    mysql -u $mysql_destination_user -p$mysql_destination_mdp $mysql_destination_database < ./temp_vidage.sql
     rm temp_vidage.sql ; echo " "
 }
 
@@ -293,28 +305,28 @@ nettoyageAdressesElectroniques() {
 
 exportBDD_Source() {
     echo -e "${BLUE}[ INFO ]${NC} Dump de la base de données ${GREEN}$mysql_source_database${NC} ..."
-    sudo mysqldump --skip-triggers --user=$mysql_source_user --password=$mysql_source_mdp $mysql_source_database > $mysql_source_database.sql  # ajout skip-triggers
+    mysqldump --skip-triggers --user=$mysql_source_user --password=$mysql_source_mdp $mysql_source_database > $mysql_source_database.sql  # ajout skip-triggers
 }
 
 importBDD_Source() {
     echo -e "${BLUE}[ INFO ]${NC} Import de la base de données ${GREEN}$mysql_source_database${NC} ..."
-    sudo mysql --user=$mysql_source_user --password=$mysql_source_mdp $mysql_source_database < $mysql_source_database.sql   
+    mysql --user=$mysql_source_user --password=$mysql_source_mdp $mysql_source_database < $mysql_source_database.sql   
 }
 
 # Sert au script de clonage et clonage BDD
 importBDD_Destination() {
     echo -e "${BLUE}[ INFO ]${NC} Import de la base de données ${GREEN}$mysql_destination_database${NC} ..."
-    sudo mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $mysql_source_database.sql
+    mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $mysql_source_database.sql
 }
 
 ## Remplacement des occurences '@folder_destination' vers '@folder_source', dans folder_destination.sql. Utile que dans quelque cas précis 
 remplacement_occurences_@_dest(){  
     # Export du SQL 
-    sudo mysqldump --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database > $folder_destination.sql && echo "Connexion et DUMP SQL réussi"
+    mysqldump --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database > $folder_destination.sql && echo "Connexion et DUMP SQL réussi"
     # Remplacement de chaines contenant un '@folder_destination' par '@folder_source'
     sed -i "s/@$folder_destination/@$folder_source/g" "$folder_destination.sql"
     # Import du SQL dans la bonne BDD
-    sudo mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $folder_destination.sql && echo "Connexion et PUMP SQL réussi"
+    mysql --user=$mysql_destination_user --password=$mysql_destination_mdp $mysql_destination_database < $folder_destination.sql && echo "Connexion et PUMP SQL réussi"
 }
 
 
@@ -348,7 +360,7 @@ set_maintenance_mode() {
 get_site_root() {
 	local current_pwd=$(pwd)
 	cd $racine
-	local result=$(find -maxdepth 2 -name $1 -type d -printf "%P\n" | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
+	local result=$(find -maxdepth 2 -name $1 -type d -printf "%P\n" 2> /dev/null | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
 	test -d "$result/httpdocs" && result="$result/httpdocs"
 	cd $current_pwd
 	echo $result

@@ -11,22 +11,22 @@ function cvgp() {
     testCMS
 
     if [ "$cms_instance" == "wordpress" ]; then 
-        cd $racine/$instance/httpdocs/wp-content/uploads/civicrm/ext/$extension && git pull "$1"
+        cd $racine/$instance/wp-content/uploads/civicrm/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
     fi
 
     if [ "$cms_instance" == "drupal" ]; then
-        cd $racine/$instance/httpdocs/sites/default/files/civicrm/ext/$extension && git pull "$1"
+        cd $racine/$instance/sites/default/files/civicrm/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
     fi
 
     if [ "$cms_instance" == "standalone" ]; then
-        cd $racine/$instance/httpdocs/ext/$extension && git pull "$1"
+        cd $racine/$instance/ext/$extension && git pull "$1"
         #cv en "$extension" && cv updb && rep
     fi
 
     if [ "$cms_instance" == "backdrop" ]; then
-    	cd $racine/$instance/httpdocs/files/civicrm/ext && git pull "$1"    	    	
+    	cd $racine/$instance/files/civicrm/ext && git pull "$1"    	    	
     fi
     echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
     rep

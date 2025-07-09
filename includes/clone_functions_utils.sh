@@ -8,7 +8,7 @@ display_db_size()
     fi
     echo " ";
     echo -e "Taille de ${GREEN}$1${NC}";
-    plesk db "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base' FROM information_schema.TABLES WHERE table_schema = '$1';"
+    echo "SELECT CONCAT(ROUND(SUM(data_length + index_length) / 1024 / 1024, 2), ' Mo') AS 'Taille de la base' FROM information_schema.TABLES;" | sql
     echo " ";
     return 0;
 }
@@ -24,6 +24,7 @@ print_clone_bdd_resume()
 }
 
 vidage_bdd() {
+	cd $HOME
     table_count=$(mysql -u "$2" -p"$3" -e "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema='$1';" -s -N)
 
     if [ -z "$table_count" ] | [ "$table_count" -eq 0 ]; then
@@ -31,28 +32,28 @@ vidage_bdd() {
         echo -e "${RED}[ ERREUR ]${NC} bdd déjà vide ?"
         return 0;
     fi
-    # Tentative de connexion et dump des tables sans données
     echo "SET FOREIGN_KEY_CHECKS = 0;" > ./temp_vidage.sql 
     echo -e ">> Vidage de la base de données ${GREEN}$1${NC} ..."
-    sudo mysqldump --lock-tables=false --add-drop-table --no-data -u "$2" -p"$3" "$1" | grep 'DROP TABLE' >> ./temp_vidage.sql
+    mysqldump --lock-tables=false --add-drop-table --no-data -u "$2" -p"$3" "$1" | grep 'DROP TABLE' >> ./temp_vidage.sql
     echo "SET FOREIGN_KEY_CHECKS = 1;" >> ./temp_vidage.sql 
-    sudo mysql -u $2 -p$3 $1 < ./temp_vidage.sql
+    mysql -u $2 -p$3 $1 < ./temp_vidage.sql
     rm temp_vidage.sql ; echo " "
+    cd $OLDPWD
 }
 
 get_bdd_from_instance() {
     echo -e "${BLUE}[ INFO ]${NC} Récupération de la base de données ${GREEN}$1${NC}...";
 
     if [ "$4" = "--skip-triggers" ]; then
-        sudo mysqldump --skip-triggers --user="$2" --password="$3" "$1" > "$1.sql"
+        mysqldump --skip-triggers --user="$2" --password="$3" "$1" > "$1.sql"
     else 
-        sudo mysqldump --user="$2" --password="$3" "$1" > "$1.sql"
+        mysqldump --user="$2" --password="$3" "$1" > "$1.sql"
     fi
 }
 
 set_bdd_in_instance() {
     echo -e "${BLUE}[ INFO ]${NC} Mise à jour de la bdd ${GREEN}$1${NC} depuis le ficher ${GREEN}$4${NC}..."
-    sudo mysql --user="$2" --password="$3" "$1" < "$4"   
+    mysql --user="$2" --password="$3" "$1" < "$4"   
 }
 
 get_instance_cms ()

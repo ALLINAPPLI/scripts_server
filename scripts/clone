@@ -39,6 +39,7 @@ for site in $sites; do OPTIONS+=("$site" ""); done
 
 source "$CUSTOM_DIR/includes/functions.sh";
 source "$CUSTOM_DIR/includes/clone_functions_utils.sh";
+source "$CUSTOM_DIR/sources/utils.sh"
 
 #################################################################
 # Récupération de la liste des domaines
@@ -105,32 +106,36 @@ echo -e "${YELLOW}===============================================${NC}"
 echo -e "${BLUE}[ INFO ]${NC} Vous allez cloner ${GREEN}$folder_source${NC} vers ${GREEN}$folder_destination${NC}"    
 echo -e "${YELLOW}================================================${NC}" 
 
+root_folder_dest=$(get_site_root $folder_destination)
+root_folder_src=$(get_site_root $folder_source)
+
 # Condition pour suppression des tables de la base de données destination
 echo -e "${GREY} >> ${NC} Faut-il vider la base de données ${GREEN}$mysql_destination_database${NC} de ${GREEN}$folder_destination${NC} ? o(oui) ou n(non)"
 read reponse1
 if [ "$reponse1" = "o" ]; then
     vidage_bdd "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
-    display_db_size $mysql_source_database
+    cd $racine/$root_folder_src
+    display_db_size $mysql_source_database$
+    cd $racine/$root_folder_dest
     display_db_size $mysql_destination_database
 fi
 
-root_folder_dest=$(get_site_root $folder_destination)
-root_folder_src=$(get_site_root $folder_source)
 
 #***  Debut clonage  ***#
 ## Partie source
 clone_files()
 {
+	local tmp_file=$(mktemp)
 	cd $racine
     echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
     cd $root_folder_src
-    tar -cf $racine/$folder_source.tar ./*
+    tar -cf $tmp_file ./*
 	cd $racine
 
     echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
     rm -rf $root_folder_dest/*
-    tar -xf "$folder_source.tar" -C  $root_folder_dest
-    rm $folder_source.tar
+    tar -xf $tmp_file -C  $root_folder_dest
+    rm -f $tmp_file
     echo -e "${GREEN}[ SUCCÈS ]${NC} Fichiers clonés !"
 }
 
@@ -205,7 +210,7 @@ echo -e "${YELLOW}================================================${NC}" ; echo 
 
 
 # Correction de la propriété des fichiers 
-echo -e ">> Plesk repair..." && plesk repair fs "$folder_destination" -y
+echo -e ">> Plesk repair..." && rep
 
 # Point de contrôle de vérification ou non de l'égalité de l'utilisateur et la base de données destination
 if [ "$mysql_source_user" == "$mysql_destination_user" ] || [ "$mysql_source_database" == "$mysql_destination_database" ]; then
