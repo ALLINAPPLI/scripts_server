@@ -1,0 +1,13 @@
+#!/bin/bash
+
+extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
+        | grep '|' \
+        | awk '{print $2}' \
+        | grep -v '^key$' \
+        | grep -v '^+$')
+
+
+for ele in $extensions; do
+	cv ext:download "$ele" --force
+	cv ext:enable "$ele"
+done

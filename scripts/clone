@@ -160,7 +160,6 @@ modify_value_within_files()
     	
 
     if [ "$cms_instance_source" == "standalone" ]; then
-    	echo "${BLUE}[ INFO ]${NC} C'est une standalone"
         maj_valeur_civicrm_settings_php "$racine/$root_folder_dest/private/"
     fi
     echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers ont été remplacées"
@@ -200,6 +199,8 @@ if [ ! $pid_to_wait = "" ]; then
     wait $pid_to_wait
 fi
 
+cd "$racine/$root_folder_src"
+
 if [ $maintenance_mod = "o" ] || [ $maintenance_mod = "O" ]; then
     unset_maintenance_mode $folder_source $cms_instance_source
     unset_maintenance_mode $folder_destination $cms_instance_source
@@ -208,6 +209,7 @@ fi
 echo -e "${GREEN}[ SUCCÈS ]${NC} -✅- Clonage terminé !"
 echo -e "${YELLOW}================================================${NC}" ; echo " "
 
+cd "$racine/$root_folder_dest"
 
 # Correction de la propriété des fichiers 
 echo -e ">> Plesk repair..." && rep
@@ -223,8 +225,9 @@ fi
 
 # faire le rebuild triggers
 echo -e "${BLUE}[ INFO ]${NC} rebuilding the triggers"
-cd "$racine/$root_folder_src"
-cv api4 System.flush triggers=1 2> /dev/null > /dev/null
+(
+	cv flush && cv api4 System.flush && cv api4 System.flush triggers=1
+) 2> /dev/null > /dev/null 
 if [ $? -eq 0 ]; then
     echo -e "${BLUE}[ INFO ]${NC} triggers rebuild"
 else

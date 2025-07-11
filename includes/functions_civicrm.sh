@@ -4,9 +4,12 @@
 #  ! cd /var/www/vhosts/$civi_folder/httpdocs/sites/all/modules/civicrm.zip
 # * Fin
 
+source $CUSTOM_DIR/includes/functions.sh
+source $CUSTOM_DIR/sources/utils.sh
+
 updateCivicrm(){ 
 
-    cd $vhosts/$civi_folder/httpdocs
+    cd $vhosts/$civi_folder
 
     civicrm="civicrm"
     un="1"
@@ -60,7 +63,7 @@ updateCivicrm(){
     # Déclaration des variables
     echo -e ">> Téléchargement de la version ${GREEN}${civi_version:-${civi_type}}${NC} de CiviCRM ..."
     echo -e '\e[93m================================================\033[0m' ; echo " "
-    wget $download_link
+    wget $download_link -q
     echo -e '\e[93m================================================\033[0m' ; echo " "
 
     # Conditions sur le CMS
@@ -79,7 +82,8 @@ updateCivicrm(){
     elif [ $cms_instance == "standalone" ]; then
         echo ">> Décompression de l'archive dans le dossier $vhosts/$civi_folder/httpdocs ..."
         cd $chemin_plugins_standalone && tar -xzf $civi_download || tar -xzf $civi_download.$un
-        mv $vhosts/$civi_folder/httpdocs/civicrm-standalone/core/* $vhosts/$civi_folder/httpdocs/core && rm -rf civicrm-standalone
+        ls $vhosts/$civi_folder
+        mv $vhosts/$civi_folder/civicrm-standalone/core/* $vhosts/$civi_folder/core && rm -rf civicrm-standalone
     else
         echo "Pas de CMS trouvé, fin du script" && exit 0
     fi
@@ -89,12 +93,12 @@ updateCivicrm(){
     [[ $civi_type_version == "p" || $civi_type_version == "d" ]] && echo -e ">> Installation de la version ${GREEN}$civi_version${NC} ..."
     [[ $civi_type_version == "b" || $civi_type_version == "a" ]] && echo -e ">> Installation de la version ${GREEN}$civi_type${NC} ..."
 
-    cd $vhosts/$civi_folder/httpdocs
+    cd $vhosts/$civi_folder
 
     # [ $cms_instance == "drupal" ] && drush pm-updatestatus civicrm && drush cc all # Check plugin status
 
-    echo " " ; cv updb ; cv flush 
-    echo " " ; echo -e ">> Plesk repair ..." && plesk repair fs $civi_folder -y 
+    echo " " ; cv updb > /dev/null ; cv flush > /dev/null 
+    echo " " ; echo -e ">> Plesk repair ..." && rep
     [[ $civi_type_version == "p" || $civi_type_version == "d" ]] && echo -e ">> Montée de version vers ${GREEN}${cms_instance}:${civi_version}${NC} effectuée" ; echo " "
     [[ $civi_type_version == "b" || $civi_type_version == "a" ]] && echo -e ">> Montée de version vers ${GREEN}${cms_instance}:${civi_type}${NC} effectuée" ; echo " "
     cd $vhosts
