@@ -35,7 +35,9 @@ dis   : Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes 
 un    : Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dosser extensions 
 cvgc  : git clone && activation de l'extension CiviCRM
 cvgp  : git pull extension CiviCRM déjà clonée
-cvextup : mets à jour toutes les extensions civicrm
+cvextup : mets à jour toutes les extensions civicrm pour une nouvelle version de civicrm
+cvallup : mets à jour toutes les extensions de civicrm
+allup : cvallup
 
 === Gérer une instance CiviCRM ===
 cvup  : Mise à jour de la BDD CiviCRM de l'instance

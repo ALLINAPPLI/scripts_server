@@ -82,7 +82,6 @@ updateCivicrm(){
     elif [ $cms_instance == "standalone" ]; then
         echo ">> Décompression de l'archive dans le dossier $vhosts/$civi_folder/httpdocs ..."
         cd $chemin_plugins_standalone && tar -xzf $civi_download || tar -xzf $civi_download.$un
-        ls $vhosts/$civi_folder
         mv $vhosts/$civi_folder/civicrm-standalone/core/* $vhosts/$civi_folder/core && rm -rf civicrm-standalone
     else
         echo "Pas de CMS trouvé, fin du script" && exit 0
