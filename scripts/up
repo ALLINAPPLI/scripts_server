@@ -30,17 +30,17 @@ select instance in "${listSite[@]}"; do break; done
 
 echo -e '\e[93m=============================================\033[0m'
 echo -e "L'instance cible choisie est : ${GREEN}$instance${NC}"
-civi_folder=$instance
+civi_folder=$(get_site_root $instance)
 
-test -e $vhosts/$civi_folder/httpdocs/sites/default/settings.php && cms_instance="drupal"
-test -e $vhosts/$civi_folder/httpdocs/private/civicrm.settings.php && cms_instance="standalone"
-test -e $vhosts/$civi_folder/httpdocs/wp-config.php && cms_instance="wordpress"
-test -e $vhosts/$civi_folder/httpdocs/settings.php && cms_instance="backdrop"
+test -e $vhosts/$civi_folder/sites/default/settings.php && cms_instance="drupal"
+test -e $vhosts/$civi_folder/private/civicrm.settings.php && cms_instance="standalone"
+test -e $vhosts/$civi_folder/wp-config.php && cms_instance="wordpress"
+test -e $vhosts/$civi_folder/settings.php && cms_instance="backdrop"
 
-chemin_plugins_drupal="$vhosts/$civi_folder/httpdocs/sites/all/modules"  
-chemin_plugins_wordpress="$vhosts/$civi_folder/httpdocs/wp-content/plugins"  
-chemin_plugins_standalone="$vhosts/$civi_folder/httpdocs"   
-chemin_plugins_backdrop="$vhosts/$civi_folder/httpdocs/modules"
+chemin_plugins_drupal="$vhosts/$civi_folder/sites/all/modules"  
+chemin_plugins_wordpress="$vhosts/$civi_folder/wp-content/plugins"  
+chemin_plugins_standalone="$vhosts/$civi_folder"   
+chemin_plugins_backdrop="$vhosts/$civi_folder/modules"
 
 if [ ! -e $chemin_plugins_wordpress ] && [ ! -e $chemin_plugins_drupal ] && [ ! -e $chemin_plugins_standalone ]; then
     echo -e '\e[93m=======================================\033[0m' 
@@ -125,5 +125,7 @@ case $civi_type_version in
 			;;
 esac
 
-cv updb
+cd $racine/$civi_folder
+
+cv updb > /dev/null
 unset_maintenance_mode $instance $cms_instance

@@ -152,13 +152,15 @@ majValeursCivicrm_Drupal() {
         return
     fi
     cd ./sites/default/
-    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    if [ -v DEBUG ]; then
+        echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    fi
     replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
 			"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
-      		-- civicrm.settings.php
+      		-- civicrm.settings.php > /dev/null
     sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
-    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    replace "$root_folder_src" "$root_folder_dest"\
+    		"$folder_source" "$folder_destination" -- civicrm.settings.php 
 }
 
 majValeur_Backdrop() {
@@ -176,12 +178,14 @@ majValeur_Backdrop() {
        	cd $racine
         return
     fi
-    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    if [ -v DEBUG ]; then
+        echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    fi
    	replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
 		"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
-   		-- civicrm.settings.php
-    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
-    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+   		-- civicrm.settings.php > /dev/null
+   	replace "$root_folder_src" "$root_folder_dest"\
+   			"$folder_source" "$folder_destination" -- civicrm.settings.php 
 	cd $racine
 }
 
@@ -221,13 +225,16 @@ majValeursCivicrm_Wordpress() {
     fi
 
     cd $root_folder_dest/wp-content/uploads/civicrm
-    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    if [ -v DEBUG ]; then
+        echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    fi
 
     replace "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"\
 			"mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database"\
-      		-- civicrm.settings.php
-    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
-    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+      		-- civicrm.settings.php > /dev/null
+    replace "$root_folder_src" "$root_folder_dest"\
+    		"$folder_source" "$folder_destination" -- civicrm.settings.php 
+
 	cd $racine
 }
 
@@ -240,15 +247,17 @@ maj_valeur_civicrm_settings_php()
     fi
 
     cd $file_path
-    echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    if [ -v DEBUG ]; then
+    	echo "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database"
+    fi
 
     replace \
       "mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database" \
       "mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database" \
-      -- civicrm.settings.php
+      -- civicrm.settings.php > /dev/null
     sed -i "s|mysql://$mysql_source_user:$mysql_source_mdp@$mysql_server/$mysql_source_database|mysql://$mysql_destination_user:$mysql_destination_mdp@$mysql_server/$mysql_destination_database|g" civicrm.settings.php
-    sed -i "s|$root_folder_src|$root_folder_dest|g" civicrm.settings.php
-    sed -i "s|$folder_source|$folder_destination|g" civicrm.settings.php
+    replace "$root_folder_src" "$root_folder_dest"\
+    		"$folder_source" "$folder_destination" -- civicrm.settings.php 
 }
 
 ## Vidage de l'instance destination
@@ -370,6 +379,7 @@ unset_maintenance_mode() {
     local site="$1"
     local instance_support=$2
     local current_pwd=$(pwd)
+    local site_root=$(get_site_root $site)
     cd "/var/www/vhosts/$site/httpdocs/"
 
     if [[ "$instance_support" == "drupal" ]]; then

@@ -33,7 +33,6 @@ testCMS() {
 
 fonction_test() {
     select_and_testCMS
-    echo $instance
 
     if [ "$cms_instance" == "wordpress" ]; then
         echo "..."
@@ -130,25 +129,20 @@ cvpatch() {
    	cd $racine
 
     if [ "$cms_instance" == "wordpress" ]; then
-    	echo "$cms_instance !"
         cd $instance/wp-content/plugins/civicrm/civicrm/
 	fi
 	        
     if [ "$cms_instance" == "drupal" ]; then
-    	echo "$cms_instance !"
         cd $instance/sites/all/modules/civicrm/
    	fi
 
     if [ "$cms_instance" == "standalone" ]; then
-    	echo "$cms_instance !"
         cd $instance/core
     fi
 
     if [ "$cms_instance" == "backdrop" ]; then
-    	echo "$cms_instance !"
     	cd $instance/modules/civicrm/
     fi
-    pwd
     apply_p
    	cd $racine/$instance    
     cv flush && rep
