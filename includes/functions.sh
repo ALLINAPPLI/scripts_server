@@ -132,13 +132,14 @@ remplacementURL_BDD() {
 
 ## Test CMS - Drupal
 majValeurs_Drupal() {
-    cd $root_folder_dest/sites/default/
-
-    [[ -f "settings.php" ]] && sed -i "s|'database' => '$mysql_source_database'|'database' => '$mysql_destination_database'|g" settings.php
-    [[ -f "settings.php" ]] && sed -i "s|'username' => '$mysql_source_user'|'username' => '$mysql_destination_user'|g" settings.php
-    [[ -f "settings.php" ]] && sed -i "s|'password' => '$mysql_source_mdp'|'password' => '$mysql_destination_mdp'|g" settings.php
- ## [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
-    [[ -f "settings.php" ]] && sed -i "s|$base_url = 'https://$folder_source'|$base_url = 'https://$folder_destination'|g" settings.php
+    cd $racine/$root_folder_dest/sites/default/
+    if [[ -f "settings.php" ]]; then
+	    replace "'database' => '$mysql_source_database'" "'database' => '$mysql_destination_database'" -- settings.php 2> /dev/null >&2
+	    replace "'username' => '$mysql_source_user'" "'username' => '$mysql_destination_user'" -- settings.php 2> /dev/null >&2
+	    replace "'password' => '$mysql_source_mdp'" "'password' => '$mysql_destination_mdp'" -- settings.php 2> /dev/null >&2
+	 	# [[ -f "settings.php" ]] && sed -i "s|https://$folder_source|https://$folder_destination|g" settings.php
+	    replace "$base_url = 'https://$folder_source'" "$base_url = 'https://$folder_destination'" -- settings.php 2> /dev/null >&2
+	fi
     cd $racine
 }
 
