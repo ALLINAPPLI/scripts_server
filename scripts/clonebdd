@@ -24,16 +24,41 @@ source $CUSTOM_DIR/includes/functions.sh
 source $CUSTOM_DIR/includes/clone_functions_utils.sh
 cd $vhosts 
 
+
+
+
+
+while getopts "s:d:" opt; do
+  case $opt in
+    s)
+      folder_source="$OPTARG"
+      ;;
+    d)
+      folder_destination="$OPTARG"
+      ;;
+    \?)
+      echo "Usage: $0 -s <name> -d <file>"
+      exit 1
+      ;;
+  esac
+done
+
+
  
 ## Choix de l'instance source 
-folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "${folder_source}" ]; then
+	folder_source=$(whiptail --title "Choix de l'instance à cloner" --menu "Sélectionne une instance à cloner :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+fi
 if [ -z "$folder_source" ]; then
     echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
     exit 1;
 fi
 
+
 ## Choix de l'instance destination 
-folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+if [ -z "$folder_destination" ]; then
+	folder_destination=$(whiptail --title "Choix de l'instance de destination" --menu "Sélectionne une instance à remplacer :" 20 60 10 "${OPTIONS[@]}" 3>&1 1>&2 2>&3)
+fi
 if [ -z "$folder_destination" ]; then
     echo -e "${RED}[ERREUR]${NC} Vous devez choisir une instance";
     exit 1;
@@ -48,6 +73,7 @@ result_src="$(get_instance_cms $folder_source)" || exit 1
 result_dest="$(get_instance_cms $folder_destination)" || exit 1
 read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result_src"
 read cms_instance_destination mysql_destination_database mysql_destination_user mysql_destination_mdp <<< "$result_dest"
+
 
 # Point de contrôle de vérification de $folder_source == $folder_destination 
 exit_on_equal "$folder_source" "$folder_destination" "Source et destination sont égaux, restaurez $folder_source et/ou $folder_destination"
@@ -66,12 +92,20 @@ print_clone_bdd_resume "Source" "$mysql_source_database" "$mysql_source_user" "$
 print_clone_bdd_resume "Destination" "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
 
 
+root_folder_dest=$(get_site_root $folder_destination)
+root_folder_src=$(get_site_root $folder_source)
+
+
 # Condition pour suppression des tables de la base de données destination
 echo "Faut-il vider la base de données $mysql_destination_database de $folder_destination ? o(oui) ou n(non)"
 read reponse1
 if [ "$reponse1" = "o" ]; then
     vidage_bdd "$mysql_destination_database" "$mysql_destination_user" "$mysql_destination_mdp"
+    cd $racine/$root_folder_src
+    pwd
     display_db_size $mysql_source_database
+    cd $racine/$root_folder_dest
+    pwd
     display_db_size $mysql_destination_database
 fi
 
