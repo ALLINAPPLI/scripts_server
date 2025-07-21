@@ -22,7 +22,7 @@ echo -e '\e[93m=====================================\033[0m'
 echo "De quelle instance souhaitez vous en vider la base de données ?" && echo " "
 
 # Récupération de la liste des domaines 
-listSite=($(plesk bin site --list))
+listSite=($(get_sites))
 select folder_source in "${listSite[@]}"; do break; done
 
 echo -e '\e[93m=============================================\033[0m'
