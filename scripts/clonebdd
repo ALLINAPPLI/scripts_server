@@ -15,7 +15,7 @@ mysql_source_mdp="";
 mysql_destination_database="";
 mysql_destination_user="";
 mysql_destination_mdp="";
-sites=$(plesk bin site --list)
+sites=$(get_sites)
 OPTIONS=()
 for site in $sites; do OPTIONS+=("$site" ""); done
 
