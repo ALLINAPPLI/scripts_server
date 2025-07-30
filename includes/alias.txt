@@ -1,82 +1,81 @@
 === Générique utils ===
-maliass : pour éditer ce fichier
-www   : cd /var/www/vhosts
-cl    : clear
+www     : cd /var/www/vhosts
+cl      : clear
 
-=== Commande spécifique client ===
-impots: cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
-cnec : envoi du rapport pour la création des comptes web pour le CNEC pour Make
+=== Commandes spécifiques client ===
+impots : cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
+cnec   : envoi du rapport pour la création des comptes web pour le CNEC (via Make)
 
-=== Manipulation globale d'instance ===
-backup : Sauvegarde une instance 
-clone : Lancement du script de clonage d'instances 
-clonebdd : Lancement du script de clonage de base de données 
-remp  : Lancement du script de remplacement de valeurs dans base de données 
-up    : Lancement du script civi-update.sh, pour la mise a jour de versions CiviCRM de l'instance que l'on souhaite 
-vcv   : Affichage de toute les instances avec leur version de CiviCRM et PHP
-vcms  : Affichage de toute les instances avec leur version de CMS et PHP
+=== Manipulations globales d'instances ===
+backup   : Sauvegarde une instance
+clone    : Lancement du script de clonage d’instances
+clonebdd : Lancement du script de clonage de base de données
+remp     : Lancement du script de remplacement de valeurs dans la base de données
+up       : Lancement du script civi-update.sh, pour la mise à jour des versions CiviCRM de l’instance souhaitée
+vcv      : Affichage de toutes les instances avec leur version de CiviCRM et PHP
+vcms     : Affichage de toutes les instances avec leur version de CMS et PHP
 
-=== Manipulation de base de donnée ===
-getbdd  : récupère les identifiant de la base de donnée de l'instance courante
-sql	    : ouvre le terminal SQL de l'instance courrante, peut être utilisé sous la forme sql < fichier.sql
-dump    : récupère l'intégralité de la base de donnée, si aucune direction l'affiche dans le terminal
+=== Manipulations de base de données ===
+getbdd : Récupère les identifiants de la base de données de l’instance courante
+sql    : Ouvre le terminal SQL de l’instance courante, peut être utilisé sous la forme `sql < fichier.sql`
+dump   : Récupère l’intégralité de la base de données ; si aucune redirection n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal
 
-=== Lister des extensions CiviCRM ===
+=== Lister les extensions CiviCRM ===
 list   : Lister toutes les extensions présentes
 listi  : Lister les extensions installées
-listd  : Lister les extensions desinstallées
+listd  : Lister les extensions désinstallées
 listu  : Lister les extensions supprimées
-listup : Lister les extensions installées et mettables à jour
+listup : Lister les extensions installées et pouvant être mises à jour
 
-=== Gérer les extensions CiviCRM d'une instance ===
-en    : Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
-dll   : Installation et activation d'une et plusieurs extensions CiviCRM
-dis   : Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance 
-un    : Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dosser extensions 
-cvgc  : git clone && activation de l'extension CiviCRM
-cvgp  : git pull extension CiviCRM déjà clonée
-cvextup : mets à jour toutes les extensions civicrm pour une nouvelle version de civicrm
-cvallup : mets à jour toutes les extensions de civicrm
-allup : cvallup
+=== Gérer les extensions CiviCRM d’une instance ===
+en       : Activation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
+dll      : Installation et activation d’une ou plusieurs extensions CiviCRM
+dis      : Désactivation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
+un       : Désinstallation d’une ou plusieurs extensions, avec suppression du dossier correspondant dans le dossier `extensions`
+cvgc     : `git clone` + activation de l’extension CiviCRM
+cvgp     : `git pull` d’une extension CiviCRM déjà clonée
+cvextup  : Met à jour toutes les extensions CiviCRM pour une nouvelle version de CiviCRM
+cvallup  : Met à jour toutes les extensions de CiviCRM
+allup    : Alias de `cvallup`
 
 === Gérer une instance CiviCRM ===
-cvup  : Mise à jour de la BDD CiviCRM de l'instance
-cvf   : Vidage simple du cache de CiviCRM 
-cvff  : Full flush, Vidage du cache de CiviCRM + reconstruit les déclencheurs, plus lent mais plus profond que cvf
-cvpatch : patch du core de CiviCRM, depuis Github
-cvdall : Désactive toutes les extensions civicrm
-cvall : Active toutes les extensions civicrm
+cvup     : Mise à jour de la BDD CiviCRM de l’instance
+cvf      : Vidage simple du cache de CiviCRM
+cvff     : Flush complet — vidage du cache de CiviCRM + reconstruction des déclencheurs ; plus lent mais plus profond que `cvf`
+cvpatch  : Patch du core de CiviCRM, depuis GitHub
+cvdall   : Désactive toutes les extensions CiviCRM
+cvall    : Active toutes les extensions CiviCRM
 
-=== Gérer une instance Wordpress ===
-wpf   : Vider le cache de Wordpress
-wpdeb : Activer le mod debug 
-wpudeb : Désactiver le mode debug
+=== Gérer une instance WordPress ===
+wpf     : Vider le cache de WordPress
+wpdeb   : Activer le mode debug
+wpudeb  : Désactiver le mode debug
 
-=== Gérer les extensions Wordpress d'une instance ===
-wpgc  : git clone && activation de l'extension Wordpress
-wpgp  : git pull d'une extension Wordpress
-wpi   : Installer une extension Wordpress
-wpa   : Activer une extension Wordpress
-wpd   : Désactiver une extension Wordpress
-wpu   : Désinstaller une extension Wordpress
-wpup  : Mettre à jour une extension Wordpress
-wpall : Activer toutes les extensions Wordpress
-wpall --cancel : annuler l'activation de toutes les extensions Wordpress
-wpdall : Désactiver toutes les extensions Wordpress
-wpdall --cancel : Annuler la désactivation de toutes les extensions Wordpres
+=== Gérer les extensions WordPress d’une instance ===
+wpgc   : `git clone` + activation de l’extension WordPress
+wpgp   : `git pull` d’une extension WordPress
+wpi    : Installer une extension WordPress
+wpa    : Activer une extension WordPress
+wpd    : Désactiver une extension WordPress
+wpu    : Désinstaller une extension WordPress
+wpup   : Mettre à jour une extension WordPress
+wpall  : Activer toutes les extensions WordPress
+wpall --cancel : Annuler l’activation de toutes les extensions WordPress
+wpdall : Désactiver toutes les extensions WordPress
+wpdall --cancel : Annuler la désactivation de toutes les extensions WordPress
 
 === Gérer une instance Backdrop ===
-beef  : Vider le cache de Backdrop
+beef   : Vider le cache de Backdrop
 
 === Plesk utils ===
-rep   : Lancement de la commande plesk-repair sur l'instance où l'on est placé
-repall : Lancement de la commande plesk-repair sur l'intégralité des instances
-getplesksite : Récuperation de l'instance où l'on est placé
+rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
+repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
+getplesksite : Récupération de l’instance en cours
 
 === Accès aux fichiers ===
-bashrc : Acceder au fichier .bashrc via nano 
-mbashrc : Acceder au fichier .bashrc via micro 
-saverc : Sauvegarder les modifications faites au fichier .bashrc
+bashrc  : Accéder au fichier `.bashrc` via `nano`
+mbashrc : Accéder au fichier `.bashrc` via `micro`
+saverc  : Sauvegarder les modifications faites au fichier `.bashrc`
 maliass : Éditer ce fichier de liste des alias
-aliass : Alias qui affiche uniquement les aliases que l'on a créés
-alias  : commande qui affiche nos alias (sans les fonctions) ainsi que les Alias UNIX déjà existants
+aliass  : Alias qui affiche uniquement les alias que l’on a créés
+alias   : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants

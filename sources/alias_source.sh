@@ -13,13 +13,13 @@ alias cmd="/root/custom_cmds/includes"
 # alias vidage="cd /home/scripts ; ./vidage.sh" ## Lancement du script de vidage de BDD
 
 ### Aliases pour les commandes "cv"
-alias cvup="cv upgrade:db && rep"
-alias list="cv ext:list -L --columns=key,label,version,status" 
-alias listi="cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed"
-alias listu="cv ext:list -L --columns=key,label,version,status --statuses=uninstalled"
-alias listd="cv ext:list -L --columns=key,label,version,status --statuses=disabled"
-alias listup="cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed --upgrade=available"
-alias cvs="cv status"
+alias cvup="test -d httpdocs && cd httpdocs ; cv upgrade:db && rep"
+alias list="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status" 
+alias listi="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed"
+alias listu="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status --statuses=uninstalled"
+alias listd="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status --statuses=disabled"
+alias listup="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed --upgrade=available"
+alias cvs="test -d httpdocs && cd httpdocs ; cv status"
  
 ### Alias pour snpnc-impots
 function impots()
@@ -44,13 +44,13 @@ alias cl="clear"
 #     wp cache --allow-root flush && rep
 # }
 
-alias wpa="wp plugin activate "$1" --allow-root"
-alias wpd="wp plugin deactivate "$1" --allow-root"
-alias wpu="wp plugin uninstall "$1" --allow-root"
-alias wpf="wp cache --allow-root flush"
-alias wpl="wp plugin list --allow-root"
-alias wpup="wp plugin update "$1" --allow-root" 
-alias wpi="wp plugin install "$1" --allow-root --activate"
+alias wpa="test -d httpdocs && cd httpdocs ; wp plugin activate "$1" --allow-root"
+alias wpd="test -d httpdocs && cd httpdocs ; wp plugin deactivate "$1" --allow-root"
+alias wpu="test -d httpdocs && cd httpdocs ; wp plugin uninstall "$1" --allow-root"
+alias wpf="test -d httpdocs && cd httpdocs ; wp cache --allow-root flush"
+alias wpl="test -d httpdocs && cd httpdocs ; wp plugin list --allow-root"
+alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root" 
+alias wpi="test -d httpdocs && cd httpdocs ; wp plugin install "$1" --allow-root --activate"
 
 ### Aliases pour la modification du fichier de configuration (celui-ci)
 alias bashrc="nano ~/.bashrc"
@@ -60,6 +60,6 @@ alias aliass="format_aliases.sh $CUSTOM_DIR/includes/alias.txt"
 alias m="micro"
 alias maliass="cd /root/document/scripts_server && micro includes/alias.txt && ./setup.sh && cd -"
 
-alias wpdeb="wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
-alias wpudeb="wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
+alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
+alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
 

@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Construction du tableau ID / nom alterné
+readarray -t LINES < <(docker ps -a --format '{{.ID}} {{.Names}}')
+
+OPTIONS=()
+
+for LINE in "${LINES[@]}"; do
+  ID=$(echo "$LINE" | awk '{print $1}')
+  NAME=$(echo "$LINE" | awk '{print $2}')
+  OPTIONS+=("$ID" "$NAME")   # <== ID pair, nom impair : pour whiptail
+done
+
+# Affichage via whiptail
+docker_id=$(whiptail \
+  --title "Choix de l'instance à cloner" \
+  --menu "Sélectionne une instance à cloner :" 20 60 10 \
+  "${OPTIONS[@]}" \
+  3>&1 1>&2 2>&3)
+
+truncate -s 0 $(docker inspect --format='{{.LogPath}}' $docker_id)
