@@ -50,6 +50,9 @@ fonction_test() {
 
 ### Installation et activation d'une ou plusieurs extensions CiviCRM, pour les nouvelles ou les mises à jour
 dll() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     cv flush
     while [ $# -gt 0 ]
         do
@@ -64,6 +67,9 @@ dll() {
 
 ### Activation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
 en() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     while [ $# -gt 0 ]
         do
             #echo "Activation de l'extension "$1""
@@ -76,6 +82,9 @@ en() {
 
 ### Désactivation d'une ou plusieurs extensions CiviCRM, déjà présentes dans l'instance
 dis() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     while [ $# -gt 0 ]
         do
             #echo "Désactivation de l'extension "$1""
@@ -88,6 +97,9 @@ dis() {
 
 ### Désinstallation d'une ou plusieurs extensions à la suite, avec la suppression du dossier correspondant dans le dossier extensions
 un() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     while [ $# -gt 0 ]
         do
             local extension_name=$1
@@ -108,16 +120,25 @@ un() {
 
 ### Vidage simple du cache de CiviCRM
 cvf() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     cv flush && rep
 }
 
 ### Vidage complet du cache de CiviCRM
 cvff() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
     cv flush && cv api4 System.flush && cv api4 System.flush triggers=1 && rep
 }
 
 ### Script pour appliquer un patch depuis Github pour CiviCRM
 cvpatch() {
+    if [ -d httpdocs ]; then
+        cd ./httpdocs
+    fi
 	local prev_pwd=$(pwd)
     instance=$(getplesksite)
     testCMS
