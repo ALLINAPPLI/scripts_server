@@ -22,8 +22,8 @@ testCMS() {
 	
 	cd $racine
 	instance=$(find -maxdepth 2 -type d -name $instance 2> /dev/null | grep -v .rapid-scan-db | grep -v system)
-	test -d httpdocs && cd httpdocs && instance="$instance/httpdocs"
 	cd $instance
+	test -d httpdocs && cd httpdocs && instance="$instance/httpdocs"
     test -e wp-config.php && cms_instance="wordpress"
     test -e sites/default/settings.php && cms_instance="drupal"
     test -e private/civicrm.settings.php && cms_instance="standalone"

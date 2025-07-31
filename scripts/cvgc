@@ -6,10 +6,9 @@ source "/$CUSTOM_DIR/sources/cv_source.sh"
 function cvgc() {
     instance=$(getplesksite) 
     testCMS
-    echo "$cms_instance"
     local path_ext=""
 
-    if [ "$cms_instance" == "wordpress" ]; then 
+    if [ "$cms_instance" == "wordpress" ]; then
         path_ext=$racine/$instance/wp-content/uploads/civicrm/ext
     fi
     if [ "$cms_instance" == "drupal" ]; then
@@ -21,7 +20,6 @@ function cvgc() {
     if [ "$cms_instance" == "backdrop" ]; then
     	path_ext=$racine/$instance/files/civicrm/ext
     fi
-
     cd "$path_ext"
 
     input="$1"
@@ -33,9 +31,9 @@ function cvgc() {
         return 1;
     fi
     git clone "$1"
-
     #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
     extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
+	return 0
     ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
     cv en "$extension" && cv updb && rep
     echo -e "L'extension \033[32m$extension\033[0m a été installée"
