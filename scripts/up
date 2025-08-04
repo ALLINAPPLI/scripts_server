@@ -64,7 +64,7 @@ versionCIVI_BACKDROP=$(grep '<version_no>' $chemin_plugins_backdrop/civicrm/xml/
 echo -e '\e[93m=============================================\033[0m';
 
 # Récuperation de la dernière version de CiviCRM avec une commande Wordpress sur la testwpcivi
-echo -e "${BLUE}[ INFO ]${NC} récupération de la derniere version stable disponible"
+echo -e "${BLUE}[ INFO ]${NC} récupération de la dernière version stable disponible"
 last_version=$(curl -s https://download.civicrm.org/release/ | sed -n 's|.*<a href="/release/\([^"]*\)">.*|\1|p' | sort -V | tail -n1);
 cd $vhosts;
 
