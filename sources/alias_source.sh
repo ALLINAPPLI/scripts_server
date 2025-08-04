@@ -13,7 +13,7 @@ alias cmd="/root/custom_cmds/includes"
 # alias vidage="cd /home/scripts ; ./vidage.sh" ## Lancement du script de vidage de BDD
 
 ### Aliases pour les commandes "cv"
-alias cvup="test -d httpdocs && cd httpdocs ; cv upgrade:db && rep"
+alias cvup="test -d httpdocs && cd httpdocs ; cv updb && rep"
 alias list="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status" 
 alias listi="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status,upgrade,upgradeVersion --statuses=installed"
 alias listu="test -d httpdocs && cd httpdocs ; cv ext:list -L --columns=key,label,version,status --statuses=uninstalled"
