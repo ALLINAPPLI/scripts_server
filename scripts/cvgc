@@ -4,6 +4,7 @@ source "/$CUSTOM_DIR/sources/cv_source.sh"
 
 ### Aliases pour git clone de l'extension de CiviCRM et activation //experimental >> à simplifier
 function cvgc() {
+	test -d httpdocs && cd httpdocs	
     instance=$(getplesksite) 
     testCMS
     local path_ext=""
@@ -33,7 +34,6 @@ function cvgc() {
     git clone "$1"
     #cd "$extension" # cd vers le dossier de l'extension installée selon le nom déconstruit ! intérêt ?
     extracted_string=$(echo "$extension" | awk -F '.' '{print $NF}') && echo "Nom de l'extension clonée : $extracted_string"
-	return 0
     ##cv ext:enable "$extracted_string" && cv ext:upgrade-db && rep
     cv en "$extension" && cv updb && rep
     echo -e "L'extension \033[32m$extension\033[0m a été installée"
