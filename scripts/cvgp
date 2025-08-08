@@ -6,6 +6,7 @@ source "/$CUSTOM_DIR/sources/cv_source.sh"
 ### Aliases pour git pull de l'extension de CiviCRM et activation
 ## condition drupal à gérer
 function cvgp() {
+	test -d httpdocs && cd httpdocs
     instance=$(getplesksite)
     extension=$(echo "$1" | awk -F'/' '{print $NF}' | sed 's/\.git$//') # récupère ce qu'il y'a avant le .git
     testCMS

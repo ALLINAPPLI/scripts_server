@@ -19,7 +19,7 @@ select_and_testCMS() {
 ### Test CMS simple
 testCMS() {
 	local prev_pwd=$(pwd)
-	
+
 	cd $racine
 	instance=$(find -maxdepth 2 -type d -name $instance 2> /dev/null | grep -v .rapid-scan-db | grep -v system)
 	cd $instance
@@ -29,6 +29,7 @@ testCMS() {
     test -e private/civicrm.settings.php && cms_instance="standalone"
     test -e settings.php && cms_instance="backdrop"
     cd $prev_pwd
+    echo "instance :" $instance
 }
 
 fonction_test() {

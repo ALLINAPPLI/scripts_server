@@ -126,6 +126,6 @@ case $civi_type_version in
 esac
 
 cd $racine/$civi_folder
-
-cv updb > /dev/null
 unset_maintenance_mode $instance $cms_instance
+cv updb #> /dev/null
+rep
