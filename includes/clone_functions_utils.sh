@@ -70,10 +70,11 @@ get_instance_cms ()
 	local root_domain=$(get_site_root $1)
 	cd "$root_domain"
 
-    test -e wp-config.php && cms_instance="wordpress";
-    test -e sites/default/settings.php && cms_instance="drupal";
-    test -e private/civicrm.settings.php && cms_instance="standalone";
-    test -e settings.php && cms_instance="backdrop"
+
+    test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2;
+    test -e sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
+    test -e private/civicrm.settings.php && cms_instance="standalone" && echo "Standalone installation" >&2;
+    test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
 
 
     case "$cms_instance" in
