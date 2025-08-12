@@ -1,13 +1,16 @@
 ### Lancement de la commande plesk-repair sur l'instance où l'on est placé 
 rep() {
-  repair=$(getplesksite)
-  if [ "$(id -u)" -ne 0 ]; then
-    echo -e "$PURPLE[ATTENTION]$NC vous n'êtes pas en mode root, plesk repair skip."
-    return 0
-  fi
-  if [ -n "$repair" ]; then
-    plesk repair fs $repair -y 
-  fi
+    if [ -d httpdocs ]; then
+    	cd httpdocs
+    fi
+    repair=$(getplesksite)
+    if [ "$(id -u)" -ne 0 ]; then
+        echo -e "$PURPLE[ATTENTION]$NC vous n'êtes pas en mode root, plesk repair skip."
+        return 0
+    fi
+    if [ -n "$repair" ]; then
+        plesk repair fs $repair -y 
+    fi
 }
 
 ### Récuperation de l'instance où l'on est placé
