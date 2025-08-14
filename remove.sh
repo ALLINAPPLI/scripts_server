@@ -23,9 +23,12 @@ if [ -e "/etc/my_common" ]; then
 fi
 
 for ele in $(ls ./links); do
-    if [ -e "/etc/profile.d/$ele" ]; then 
+    echo "$ele";
+    if [ -f "/etc/profile.d/$ele" ]; then 
         echo "removing /etc/profile.d/$ele"
         rm /etc/profile.d/$ele
+    else
+        echo "$ele not existing in /etc/profile.d"
     fi
 done
 
