@@ -16,6 +16,7 @@ else
 fi
 
 export PATH="$PATH:/etc/my_common/bin:/etc/my_common/officialbin"
+export PATH="/opt/plesk/php/8.3/bin:$PATH"
 export CUSTOM_DIR="/etc/my_common"
 export racine="/var/www/vhosts"
 export GREEN='\e[1;38;5;2m'

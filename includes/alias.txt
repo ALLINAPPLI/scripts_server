@@ -81,3 +81,7 @@ wpdall --cancel : Annuler la désactivation de toutes les extensions WordPress
 
 === Gérer une instance Backdrop ===
 beef   : Vider le cache de Backdrop
+
+=== Gérer une instance Drupal ===
+dm     : mettre en maintenance
+dum    : retirer la maintenance 
