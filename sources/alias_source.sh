@@ -46,7 +46,13 @@ alias cl="clear"
 
 alias wpa="test -d httpdocs && cd httpdocs ; wp plugin activate "$1" --allow-root"
 alias wpd="test -d httpdocs && cd httpdocs ; wp plugin deactivate "$1" --allow-root"
-alias wpu="test -d httpdocs && cd httpdocs ; wp plugin uninstall "$1" --allow-root"
+
+wpu() {
+	test -d httpdocs && cd httpdocs ;
+	wp plugin deactivate "$1" --allow-root;
+	wp plugin uninstall "$1" --allow-root
+}
+
 alias wpf="test -d httpdocs && cd httpdocs ; wp cache --allow-root flush"
 alias wpl="test -d httpdocs && cd httpdocs ; wp plugin list --allow-root"
 alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root" 
@@ -62,4 +68,4 @@ alias maliass="cd /root/document/scripts_server && micro includes/alias.txt && .
 
 alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
 alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
-
+alias beef="test -d httpdocs && cd httpdocs ; bee cc all"

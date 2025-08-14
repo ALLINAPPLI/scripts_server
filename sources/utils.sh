@@ -26,6 +26,10 @@ rep() {
 # }
 
 getplesksite() {
+  if [ -d httpdocs ]; then
+  	cd httpdocs
+  fi
+
   local current_dir="$(pwd)"
   local vhost_dir="${racine%/}"  # On enlève le slash final s'il y en a
 

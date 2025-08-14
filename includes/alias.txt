@@ -2,6 +2,19 @@
 www     : cd /var/www/vhosts
 cl      : clear
 
+=== Plesk utils ===
+rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
+repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
+getplesksite : Récupération du nom de  l’instance en cours
+
+=== Accès aux fichiers ===
+bashrc  : Accéder au fichier `.bashrc` via `nano`
+mbashrc : Accéder au fichier `.bashrc` via `micro`
+saverc  : Sauvegarder les modifications faites au fichier `.bashrc`
+maliass : Éditer ce fichier de liste des alias
+aliass  : Alias qui affiche uniquement les alias que l’on a créés
+alias   : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants
+
 === Commandes spécifiques client ===
 impots : cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
 cnec   : envoi du rapport pour la création des comptes web pour le CNEC (via Make)
@@ -18,7 +31,7 @@ vcms     : Affichage de toutes les instances avec leur version de CMS et PHP
 === Manipulations de base de données ===
 getbdd : Récupère les identifiants de la base de données de l’instance courante
 sql    : Ouvre le terminal SQL de l’instance courante, peut être utilisé sous la forme `sql < fichier.sql`
-dump   : Récupère l’intégralité de la base de données ; si aucune redirection n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal
+dump   : Récupère l’intégralité de la base de données ; si aucune instruction complémentaire n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal
 
 === Lister les extensions CiviCRM ===
 list   : Lister toutes les extensions présentes
@@ -34,7 +47,7 @@ dis      : Désactivation d’une ou plusieurs extensions CiviCRM déjà présen
 un       : Désinstallation d’une ou plusieurs extensions, avec suppression du dossier correspondant dans le dossier `extensions`
 cvgc     : `git clone` + activation de l’extension CiviCRM
 cvgp     : `git pull` d’une extension CiviCRM déjà clonée
-cvextup  : Met à jour toutes les extensions CiviCRM pour une nouvelle version de CiviCRM
+cvextup  : Met à jour le code de toutes les extensions CiviCRM pour une nouvelle version de civix
 cvallup  : Met à jour toutes les extensions de CiviCRM
 allup    : Alias de `cvallup`
 
@@ -44,7 +57,9 @@ cvf      : Vidage simple du cache de CiviCRM
 cvff     : Flush complet — vidage du cache de CiviCRM + reconstruction des déclencheurs ; plus lent mais plus profond que `cvf`
 cvpatch  : Patch du core de CiviCRM, depuis GitHub
 cvdall   : Désactive toutes les extensions CiviCRM
+cvdall --cancel : annule la dernière opération de cvdall dans l'instance
 cvall    : Active toutes les extensions CiviCRM
+cvall --cancel : annule la dernière opération de cvall dans l'instance
 
 === Gérer une instance WordPress ===
 wpf     : Vider le cache de WordPress
@@ -66,16 +81,3 @@ wpdall --cancel : Annuler la désactivation de toutes les extensions WordPress
 
 === Gérer une instance Backdrop ===
 beef   : Vider le cache de Backdrop
-
-=== Plesk utils ===
-rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
-repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
-getplesksite : Récupération de l’instance en cours
-
-=== Accès aux fichiers ===
-bashrc  : Accéder au fichier `.bashrc` via `nano`
-mbashrc : Accéder au fichier `.bashrc` via `micro`
-saverc  : Sauvegarder les modifications faites au fichier `.bashrc`
-maliass : Éditer ce fichier de liste des alias
-aliass  : Alias qui affiche uniquement les alias que l’on a créés
-alias   : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants

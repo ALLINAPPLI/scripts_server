@@ -96,8 +96,6 @@ updateCivicrm(){
 
     # [ $cms_instance == "drupal" ] && drush pm-updatestatus civicrm && drush cc all # Check plugin status
 
-    echo " " ; cv updb > /dev/null ; cv flush > /dev/null 
-    echo " " ; echo -e ">> Plesk repair ..." && rep
     [[ $civi_type_version == "p" || $civi_type_version == "d" ]] && echo -e ">> Montée de version vers ${GREEN}${cms_instance}:${civi_version}${NC} effectuée" ; echo " "
     [[ $civi_type_version == "b" || $civi_type_version == "a" ]] && echo -e ">> Montée de version vers ${GREEN}${cms_instance}:${civi_type}${NC} effectuée" ; echo " "
     cd $vhosts

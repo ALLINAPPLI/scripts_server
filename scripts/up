@@ -127,5 +127,6 @@ esac
 
 cd $racine/$civi_folder
 unset_maintenance_mode $instance $cms_instance
-cv updb #> /dev/null
-rep
+echo " " ; cv updb > /dev/null ; cv flush > /dev/null 
+echo " " ; echo -e ">> Plesk repair ..." && rep
+    
