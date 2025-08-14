@@ -129,7 +129,7 @@ clone_files()
 	cd $racine
     echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
     cd $root_folder_src
-    tar -cf $tmp_file ./*
+    tar -cf $tmp_file .
 	cd $racine
 
     echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
@@ -162,7 +162,13 @@ modify_value_within_files()
     if [ "$cms_instance_source" == "standalone" ]; then
         maj_valeur_civicrm_settings_php "$racine/$root_folder_dest/private/"
     fi
-    echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers ont été remplacées"
+    echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers de config ont été remplacées"
+    echo -e "${BLUE}[ INFO ]${NC} Début de la modification dans les fichiers d'accès"
+    cd $racine/$root_folder_dest
+    local htaccess=$(find -name ".htaccess")
+    for ele in $htaccess; do
+    	replace $folder_source $folder_destination -- $ele
+    done
 }
 
 clone_bdd()

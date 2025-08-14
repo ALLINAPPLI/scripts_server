@@ -29,7 +29,6 @@ testCMS() {
     test -e private/civicrm.settings.php && cms_instance="standalone"
     test -e settings.php && cms_instance="backdrop"
     cd $prev_pwd
-    echo "instance :" $instance
 }
 
 fonction_test() {
@@ -143,7 +142,6 @@ cvpatch() {
 	local prev_pwd=$(pwd)
     instance=$(getplesksite)
     testCMS
-    echo "$instance"
     if [ -z "$instance" ]; then
     	echo -e "${RED}[ERREUR]${NC} vous n'êtes pas au sein d'une instance"
     	return 1;

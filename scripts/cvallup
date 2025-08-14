@@ -1,5 +1,10 @@
 #!/bin/bash
 
+if [ -d httpdocs ]; then
+	cd httpdocs
+fi
+
+
 extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
         | grep '|' \
         | awk '{print $2}' \

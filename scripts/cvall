@@ -5,6 +5,15 @@ if [ "$2" = "-help" ]; then
     exit 0
 fi
 
+if [ -d httpdocs ]; then
+	cd httpdocs
+fi
+
+if [ "$1" = "--cancel" ]; then
+	cvdall --list cvall_cache
+	exit $?
+fi
+
 source "$CUSTOM_DIR/includes/functions.sh"
 source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
 cms_instance=""
@@ -20,16 +29,56 @@ fi
 
 read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 
+
+
+if [ "$1" = "--list" ]; then
+    if [ -e "$2" ]; then
+        echo -e "${BLUE}[ INFO ]${NC} Récupération de toutes les extensions via le fichier donné..."
+        # extension_to_disable=$(
+        #   awk 'BEGIN{c=0}
+        #        NF{
+        #          sub(/\r$/,"");
+        #          gsub(/\047/,"''");
+        #          printf "%s\047%s\047", (c++?",":""), $0
+        #        }' "$2"
+        # )
+        extension_to_enable=$(cat $2)
+        extension_to_enable=$(echo "$extension_to_enable")
+        if [ "$extension_to_enable" = "" ]; then
+            echo -e "${RED}[ERREUR]${NC} Fichier vide ou aucune entrée valide"
+            echo $extension_to_enable
+            exit 1
+        fi
+        echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
+        # sql="UPDATE civicrm_extension SET is_active = '1' WHERE full_name IN (${extension_to_disable});"
+        # echo "$sql" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+		# cv updb
+		cv ext:enable $extension_to_enable
+		echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"
+        exit 0
+    else
+        echo "${RED}[ERREUR]${NC} La liste n'a pas été trouvée : $2"
+        ls
+        exit 1
+    fi
+fi
+
+
+
+echo -e "${BLUE}[ INFO ]${NC} Récupération des extensions actives via MySQL..."
+# echo "SELECT full_name FROM civicrm_extension WHERE is_active = '1'"\
+# 	| mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database" > cvall_cache
+
+current_extensions=$(cv ext:list -I --columns=key --statuses=disabled 2> /dev/null)
+
+echo $current_extensions > cvall_cache
+
 echo -e "${BLUE}[ INFO ] ${NC} Activation de toutes les extensions via mysql..."
-to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
-
-
-echo "UPDATE civicrm_extension
-      SET is_active = '1'
-      WHERE is_active LIKE '0'"\
-      | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+# echo "UPDATE civicrm_extension SET is_active = '1' WHERE is_active LIKE '0'"\
+#       | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+cv ext:enable $current_extensions
 
 echo -e "${BLUE}[ INFO ] ${NC} Mise à jour de la base de données"
-cv updb
+# cv updb
 
 echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"

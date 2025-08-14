@@ -1,8 +1,17 @@
 #!/bin/bash
 
-if [ "$2" = "-help" ]; then
+if [ "$1" = "-help" ]; then
     echo "Disable all CiviCRM extensions"
     exit 0
+fi
+
+if [ -d "httpdocs" ]; then
+	cd httpdocs
+fi
+
+if [ "$1" = "--cancel" ]; then
+	cvall --list cvdall_cache
+	exit $?
 fi
 
 source "$CUSTOM_DIR/includes/functions.sh"
@@ -17,17 +26,59 @@ result="$(get_instance_cms $current_site)"
 if [ $? != 0 ]; then
 	exit 1
 fi
-read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 
+read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
 
-echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
-echo "UPDATE civicrm_extension
-      SET is_active = '0'
-      WHERE is_active LIKE '1'
-      AND full_name NOT IN (${to_exclude})"\
-      | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
 
-cv updb
+if [ "$1" = "--list" ]; then
+    if [ -e "$2" ]; then
+        echo -e "${BLUE}[ INFO ]${NC} Récupération de toutes les extensions via le fichier donné..."
+        # extension_to_disable=$(
+        #   awk 'BEGIN{c=0}
+        #        NF{
+        #          sub(/\r$/,"");
+        #          gsub(/\047/,"''");
+        #          printf "%s\047%s\047", (c++?",":""), $0
+        #        }' "$2"
+        # )
+        extension_to_disable=$(cat $2)
+        extension_to_disable=$(echo $extension_to_disable)
+        if [ "$extension_to_disable" = "" ]; then
+            echo -e "${RED}[ERREUR]${NC} Fichier vide ou aucune entrée valide"
+            echo $extension_to_disable
+            exit 1
+        fi
+        echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
+        # sql="UPDATE civicrm_extension SET is_active = '0' WHERE full_name IN (${extension_to_disable});"
+        # echo "$sql" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+        # cv updb
+        cv ext:disable $extension_to_disable
+        echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"
+        exit 0
+    else
+        echo -e "${RED}[ERREUR]${NC} La liste n'a pas été trouvée : $2"
+        
+        exit 1
+    fi
+fi
+
+
+
+echo -e "${BLUE}[ INFO ]${NC} Récupération des extensions actives via MySQL..."
+# echo "SELECT full_name FROM civicrm_extension WHERE is_active = '0' AND full_name NOT IN (${to_exclude})"\
+# 	| mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database" > cvdall_cache
+exclude_list="authx|civiimport|org.civicrm.flexmailer|org.civicrm.afform|org.civicrm.search_kit|riverlea"
+current_extensions=$(cv ext:list -I --columns=key --statuses=installed 2> /dev/null)
+filtered_extension=$(echo "$current_extensions" | grep -Ev "(${exclude_list})")
+echo $filtered_extension > cvdall_cache
+
+echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
+# echo "UPDATE civicrm_extension SET is_active = '0' WHERE is_active LIKE '1' AND full_name NOT IN (${to_exclude})"\
+#       | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+cv ext:disable $filtered_extension
+
+echo -e "${BLUE}[ INFO ] ${NC} Mise à jour de la base de données"
+# cv updb
 
 echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM désactivées"
