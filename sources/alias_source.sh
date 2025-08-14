@@ -69,3 +69,7 @@ alias maliass="cd /root/document/scripts_server && micro includes/alias.txt && .
 alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
 alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
 alias beef="test -d httpdocs && cd httpdocs ; bee cc all"
+
+alias dm="test -d httpdocs && cd httpdocs ; drush vset site_offline 0 && drush cache-clear all"
+alias dum="test -d httpdocs && cd httpdocs ; drush vset site_offline 1 && drush cache-clear all"
+
