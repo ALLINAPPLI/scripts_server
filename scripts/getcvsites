@@ -1,20 +1,112 @@
 #!/bin/bash
 
-main()
-{
-	 local list_site=$(plesk bin site --list)
-	 # local list_site=("sandbox.ffmns.gestad.net")
-	 local site_count=$(echo "$list_site" | wc -l)
-	 local pids
+# main()
+# {
+# 	 local list_site=$(plesk bin site --list)
+# 	 # local list_site=("sandbox.ffmns.gestad.net")
+# 	 local site_count=$(echo "$list_site" | wc -l)
+# 	 local pids
 
-	 for instance in $list_site; do
-	 	(cd $racine/$instance/httpdocs 2> /dev/null && command my_timeout -t 2 cv setting:get site_id > /dev/null 2>&1 && printf "${instance}\n") &
-	 	pids+=($!)
-	 done
-	 for pid in $pids; do
-	 	wait $pid
-	 done
-	 sleep 0.3
+# 	 for instance in $list_site; do
+# 	 	(cd $racine/$instance/httpdocs 2> /dev/null && command my_timeout -t 2 cv setting:get site_id > /dev/null 2>&1 && printf "${instance}\n") &
+# 	 	pids+=($!)
+# 	 done
+# 	 for pid in $pids; do
+# 	 	wait $pid
+# 	 done
+# 	 sleep 0.3
+# }
+
+# main
+
+# # Version qui affice tous en ordre alphabetique avec message de time out. pour tous alfficher
+# main() {
+#     local racine="/var/www/vhosts"  # à adapter selon ton environnement
+#     local list_site
+# 	# Stocke chaque ligne de la sortie Plesk dans un tableau sans écraser les retours à la ligne
+#     mapfile -t list_site < <(plesk bin site --list)
+#     local results=()
+
+#     echo "🔍 Vérification des sites..."
+
+# 	# Parcourt les sites un à un, de façon déterministe.
+#     for instance in "${list_site[@]}"; do
+#         local site_path="$racine/$instance/httpdocs"
+
+#         if [[ ! -d "$site_path" ]]; then
+#             echo "⚠️  $instance : Répertoire introuvable"
+#             continue
+#         fi
+
+#         # Teste la commande cv avec un timeout (ajuste le délai si besoin)
+#         if command my_timeout -t 10 cv setting:get site_id >/dev/null 2>&1; then
+#             results+=("$instance")
+#         else
+#             echo "⏱️  $instance Timeout 10s ou erreur."
+#         fi
+#     done
+
+#     echo
+#     echo "✅ Sites valides trouvés :"
+#     printf '%s\n' "${results[@]}" | sort
+# }
+# main
+
+# # version plus silencieuse (pour script de prod)
+# main() {
+#     local racine="/var/www/vhosts"
+#     local list_site
+#     mapfile -t list_site < <(plesk bin site --list)
+#     local results=()
+
+#     for instance in "${list_site[@]}"; do
+#         if cd "$racine/$instance/httpdocs" 2>/dev/null; then
+#             command my_timeout -t 5 cv setting:get site_id >/dev/null 2>&1 && results+=("$instance")
+#         fi
+#     done
+
+#     printf '%s\n' "${results[@]}" | sort
+# }
+# main
+
+# exécution parallèle contrôlée + tri final
+main() {
+    local racine="/var/www/vhosts"   # 🔧 adapte si ton arborescence est différente
+    local max_jobs=5                 # 🔢 nombre de sites traités en parallèle
+    local list_site
+    mapfile -t list_site < <(plesk bin site --list)
+    local tmpfile=$(mktemp)
+    local running_jobs=0
+
+    # echo "🔍 Vérification de ${#list_site[@]} sites (max $max_jobs en parallèle)..."
+
+    for instance in "${list_site[@]}"; do
+        (
+            local site_path="$racine/$instance/httpdocs"
+
+            if [[ -d "$site_path" ]]; then
+                cd "$site_path" 2>/dev/null &&
+                command my_timeout -t 5 cv setting:get site_id >/dev/null 2>&1 &&
+                echo "$instance" >> "$tmpfile"
+            fi
+        ) &
+
+        ((running_jobs++))
+
+        # ⏳ Limite le nombre de jobs simultanés
+        if (( running_jobs >= max_jobs )); then
+            wait -n   # attend qu’un job se termine avant d’en lancer un autre
+            ((running_jobs--))
+        fi
+    done
+
+    # ⏱️ Attendre les derniers jobs
+    wait
+
+    echo
+    # echo "✅ Sites valides trouvés (triés par ordre alphabétique) :"
+    sort "$tmpfile"
+    rm -f "$tmpfile"
 }
 
 main
