@@ -26,7 +26,7 @@ echo -e '\e[93m=============================================\033[0m'
 echo "Choisissez l'instance à mettre à jour parmi les domaines disponibles : "
 listSite=($(getcvsites | sort))
 select instance in "${listSite[@]}"; do break; done
-[ -z "$instance" ] && echo -e "${RED}[ ERREUR ]${NC} Instance invalid" && exit 1
+[ -z "$instance" ] && echo -e "${RED}[ ERREUR ]${NC} Instance invalide" && exit 1
 
 echo -e '\e[93m=============================================\033[0m'
 echo -e "L'instance cible choisie est : ${GREEN}$instance${NC}"
