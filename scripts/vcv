@@ -199,7 +199,7 @@ run_multiprocess_functions()
 # Main function, 1er appelé, elle va 
 main()
 {
-    local list_site=$(get_sites)
+    local list_site=$(getcvsites) # get_sites)
     local site_count=$(echo "$list_site" | wc -l)
 
     local messages=(
