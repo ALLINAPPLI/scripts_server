@@ -205,7 +205,7 @@ main()
     local messages=(
         "🚀  Les processus ont été lancés en arrière-plan..."
         "📡  Tous les processus sont maintenant en cours d'exécution en arrière-plan."
-        "🛠️   Processus en arrière-plan lancés. Patience, ça bosse..."
+        "🛠️  Processus en arrière-plan lancés. Patience, ça bosse..."
         "✅  Lancement des processus en arrière-plan effectué avec succès."
     )
     local random_index=$((RANDOM % ${#messages[@]}))
