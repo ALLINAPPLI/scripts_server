@@ -374,6 +374,11 @@ get_site_root() {
 	test -d "$result/httpdocs" && result="$result/httpdocs"
 	cd $current_pwd
 	echo $result
+
+    # # convertir en chemin absolu
+    # result="$(realpath "$racine/$result" 2>/dev/null || echo "")"
+    # cd "$current_pwd" || return 1
+    # echo "$result"
 }
 
 unset_maintenance_mode() {
@@ -413,4 +418,41 @@ exit_on_equal()
         fi
         exit 1
     fi
+}
+
+#################################################
+## recuper la version de civicrm d'une instance
+## Ajout Par Antoine 
+#################################################
+get_civi_version() {
+    local instance="$1"
+    local site_root
+    local civi_version="---"
+    local cms="N/A"
+
+    site_root=$(get_site_root "$instance")
+    cd "$racine/$site_root" 2>/dev/null || return 1
+
+    if [[ -f "wp-config.php" ]]; then
+        cms="wordpress"
+        civi_version=$(cv status --out=shell 2>/dev/null \
+            | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1)
+    elif [[ -f "sites/default/settings.php" ]]; then
+        cms="drupal"
+        civi_version=$(cv status --out=shell 2>/dev/null \
+            | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1)
+    elif [[ -f "private/civicrm.settings.php" ]]; then
+        cms="standalone"
+        civi_version=$(cv status --out=shell 2>/dev/null \
+            | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1)
+    elif [[ -f "settings.php" ]]; then
+        cms="backdrop"
+        civi_version="---"
+    else
+        cms="N/A"
+        civi_version="---"
+    fi
+
+    cd "$OLDPWD" 2>/dev/null || true
+    echo "$civi_version"   # Ce echo sert de "return" pour $(get_civi_version ...)
 }
