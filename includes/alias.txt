@@ -41,25 +41,24 @@ listu  : Lister les extensions supprimées
 listup : Lister les extensions installées et pouvant être mises à jour
 
 === Gérer les extensions CiviCRM d’une instance ===
-en       : Activation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
-dll      : Installation et activation d’une ou plusieurs extensions CiviCRM
-dis      : Désactivation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
-un       : Désinstallation d’une ou plusieurs extensions, avec suppression du dossier correspondant dans le dossier `extensions`
+cvallup  : Met à jour toutes les extensions de CiviCRM
 cvgc     : `git clone` + activation de l’extension CiviCRM
 cvgp     : `git pull` d’une extension CiviCRM déjà clonée
 cvextup  : Met à jour le code de toutes les extensions CiviCRM pour une nouvelle version de civix
-cvallup  : Met à jour toutes les extensions de CiviCRM
-allup    : Alias de `cvallup`
+cvall    : Active toutes les extensions CiviCRM
+cvall --cancel : annule la dernière opération de cvall dans l'instance
+cvdall   : Désactive toutes les extensions CiviCRM
+cvdall --cancel : annule la dernière opération de cvdall dans l'instance
+dll      : Installation et activation d’une ou plusieurs extensions CiviCRM
+dis      : Désactivation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
+en       : Activation d’une ou plusieurs extensions CiviCRM déjà présentes dans l’instance
+un       : Désinstallation d’une ou plusieurs extensions, avec suppression du dossier correspondant dans le dossier `extensions`
 
 === Gérer une instance CiviCRM ===
 cvup     : Mise à jour de la BDD CiviCRM de l’instance
 cvf      : Vidage simple du cache de CiviCRM
 cvff     : Flush complet — vidage du cache de CiviCRM + reconstruction des déclencheurs ; plus lent mais plus profond que `cvf`
 cvpatch  : Patch du core de CiviCRM, depuis GitHub
-cvdall   : Désactive toutes les extensions CiviCRM
-cvdall --cancel : annule la dernière opération de cvdall dans l'instance
-cvall    : Active toutes les extensions CiviCRM
-cvall --cancel : annule la dernière opération de cvall dans l'instance
 
 === Gérer une instance WordPress ===
 wpf     : Vider le cache de WordPress

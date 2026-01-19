@@ -1,18 +1,23 @@
 #!/bin/bash
+source "/$CUSTOM_DIR/sources/utils.sh"
+source "/$CUSTOM_DIR/sources/cv_source.sh"
 
-if [ -d httpdocs ]; then
-	cd httpdocs
-fi
-
-
-extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
+### commande pour mettre à jour toutes les extensions d'une instance CiviCRM en lot
+function cvallup() {
+	test -d httpdocs && cd httpdocs
+	extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
         | grep '|' \
         | awk '{print $2}' \
         | grep -v '^key$' \
         | grep -v '^+$')
 
+	for ele in $extensions; do
+		cv ext:download "$ele" --force
+		cv ext:enable "$ele"
+	done
 
-for ele in $extensions; do
-	cv ext:download "$ele" --force
-	cv ext:enable "$ele"
-done
+	cv updb && rep
+	echo -e "${BLUE}Extensions de CiviCRM mises à jour${NC}" ; echo -e " "
+}
+
+cvallup $@
