@@ -1,0 +1,119 @@
+#!/bin/bash
+source "$CUSTOM_DIR/includes/functions.sh"
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+NC="\033[0m"
+
+tmp_folder="/tmp/vcv_tmp_$$"
+mkdir -p "$tmp_folder"
+
+MAX_JOBS=10
+
+version_compare() {
+    local ver1=$1 ver2=$2
+    IFS='.' read -r -a v1 <<< "$ver1"
+    IFS='.' read -r -a v2 <<< "$ver2"
+    for i in "${!v1[@]}"; do
+        local p1=${v1[$i]:-0} p2=${v2[$i]:-0}
+        if ((p1>p2)); then echo "$GREEN"; return
+        elif ((p1<p2)); then [[ $i -eq 0 ]] && echo "$RED" || echo "$YELLOW"; return; fi
+    done
+    echo "$NC"
+}
+
+process_site() {
+    local instance="$1"
+    local out_file="$tmp_folder/$instance.txt"
+
+    local root_folder
+    root_folder=$(get_site_root "$instance" 2>/dev/null)
+    real_root_folder="$(realpath "$racine/$root_folder" 2>/dev/null || echo "")"
+
+    if [[ -z "$real_root_folder" || ! -d "$real_root_folder" ]]; then
+        printf "%s|%s|%s|%s|%s|%s\n" "$instance" "N/A" "---" "---" "---" "---" > "$out_file"
+        return
+    fi
+
+    cd "$real_root_folder" || return
+
+    local cms cms_ver civi_version="---"
+    if [[ -f "wp-config.php" ]]; then
+        cms="wordpress"
+        cms_ver=$(wp core version --allow-root 2>/dev/null || "---")
+        [[ -f "wp-content/uploads/civicrm/civicrm.settings.php" ]] && \
+        civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+    elif [[ -f "sites/default/settings.php" ]]; then
+        cms="drupal"
+        cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+        [[ -f "sites/default/civicrm.settings.php" ]] && \
+        civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+    elif [[ -f "private/civicrm.settings.php" ]]; then
+        cms="standalone"
+        cms_ver=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+        civi_version=$cms_ver
+    elif [[ -f "settings.php" ]]; then
+        cms="backdrop"; cms_ver="---"
+    else
+        cms="N/A"; cms_ver="---"
+    fi
+
+    local php_version="---" php_color="$NC"
+    [[ $(id -u) -eq 0 ]] && php_version=$(plesk bin site --show-php-settings "$instance" 2>/dev/null \
+        | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+' || "---")
+    php_color=$(version_compare "$php_version" "$(cat $CUSTOM_DIR/includes/ltst-php-version 2>/dev/null || echo 0.0)")
+
+    local smarty_version="---" smarty_color="$NC"
+    smarty_version=$(cv php:eval 'echo CRM_Core_Smarty::singleton()->getVersion();' 2>/dev/null | tr -d '\n' || "---")
+    [[ "$smarty_version" == "2"* ]] && smarty_color="$RED"
+
+    # Stocker ligne brute pour tri (sans couleurs)
+    printf "%s|%s|%s|%s|%s|%s\n" "$cms" "$instance" "$cms_ver" "$civi_version" "$php_version" "$smarty_version" > "$out_file"
+
+    # Stocker ligne avec couleurs pour affichage final
+    printf "%s|%s|%s|%s|${php_color}%s${NC}|${smarty_color}%s${NC}\n" \
+        "$cms" "$instance" "$cms_ver" "$civi_version" "$php_version" "$smarty_version" > "$out_file.colored"
+}
+
+main() {
+    local messages=("🚀 Recherche de tous les sites civicrm lancée, patience cela prends peu de temps pour les avoirs tous à coup sùr ...")
+    echo -e "\033[1;34m${messages[0]}\033[0m"
+
+    local list_site
+    list_site=$(getcvsites)
+
+    local messages=(
+        "🚀  On recherche les detail pour chaque site ..."
+        "📡  Recherche de tous les détails pour chaque site ...  "
+        "🛠️  Processus en arrière-plan lancés, pour récupérer chaque valeurs. Patience, ça bosse..."
+    )
+    local random_index=$((RANDOM % ${#messages[@]}))
+    echo -e "\033[1;34m${messages[$random_index]}\033[0m"
+
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+    echo "| Instance                                     | CMS          | Version      | CiviCRM      | PHP     | Smarty  |"
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+
+    for instance in $list_site; do
+        [[ -z "$instance" ]] && continue
+        process_site "$instance" &
+        while (( $(jobs -r | wc -l) >= MAX_JOBS )); do sleep 0.1; done
+    done
+    wait
+
+    # Tri correct : CMS croissant puis instance croissante
+    # Lire la ligne avec couleurs correspondante
+    sort -t"|" -k1,1 -k2,2 "$tmp_folder"/*.txt | while IFS='|' read -r cms instance cms_ver civi_version php_version smarty_version; do
+        # Trouver la ligne colorée correspondante
+        line=$(grep "^$cms|$instance|" "$tmp_folder"/*.colored | head -n1)
+        IFS='|' read -r _ instance cms_ver civi_version php_version smarty_version <<< "$line"
+        printf "| %-44s | %-12s | %-12s | %-12s | ${php_color}%-7s${NC} | ${smarty_color}%-7s${NC} |\n" \
+                "$instance" "$cms" "$cms_ver" "$civi_version" "$php_version" "$smarty_version"
+    done
+
+    echo "+----------------------------------------------+--------------+--------------+--------------+---------+---------+"
+}
+
+main
+rm -rf "$tmp_folder"
