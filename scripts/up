@@ -1,15 +1,15 @@
 #!/bin/bash
 ##
-## Développé par Renaud Fradin, Fawzy Elsam
-## et Ilias Assadki
+## Développé par la team ALL IN APPLI
+## Renaud, Fawzy, Ilias, Ambroise, Antoine, Guillaume
 ##
-################################################
-##
-##  Scripts de mise a jour de CiviCRM pour les instances web
-##
-################################################
+################################################################
+##                                                            ##
+##  Scripts de mise à jour de CiviCRM pour les instances web  ##
+##                                                            ##
+################################################################
 shopt -s expand_aliases
-######################################################
+################################################################
 
 # Security check
 # if [ ! -f ~/.bashrc ]; then
@@ -88,7 +88,7 @@ case $civi_type_version in
                 updateCivicrm $civi_folder $civi_version
             else
                 echo -e '\e[93m=======================================\033[0m'
-                echo -e '\e[93m\033[31m Ce n`est pas une version connue\033[31m'
+                echo -e '\e[93m\033[31m Version inconnue\033[31m'
                 echo -e '\e[93m=======================================\033[0m'
                 exit 1
             fi
@@ -103,7 +103,7 @@ case $civi_type_version in
                 updateCivicrm $civi_folder $civi_version
             else
                 echo -e '\e[93m=======================================\033[0m'
-                echo -e '\e[93m\033[31m Ce n`est pas une version connue\033[31m'
+                echo -e '\e[93m\033[31m Version inconnue\033[31m'
                 echo -e '\e[93m=======================================\033[0m'
                 exit 1
             fi
@@ -127,6 +127,8 @@ esac
 
 cd $racine/$civi_folder
 unset_maintenance_mode $instance $cms_instance
-echo " " ; yes | cv updb > /dev/null ; cv flush > /dev/null
-echo " " ; echo -e ">> Plesk repair ..." && rep
-    
+echo " " ; echo -e ">> Mise à jour de la base de données en cours..."
+yes | cv updb > /dev/null ; cv flush > /dev/null
+echo -e ">> Plesk repair ..." && rep
+echo -e "${BLUE}>> Opération terminée 🚀${NC}"
+echo " "
