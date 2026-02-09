@@ -46,8 +46,8 @@ alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root
 alias wpi="test -d httpdocs && cd httpdocs ; wp plugin install "$1" --allow-root --activate"
 alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
 alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
-alias wpm="test -d httpdocs && cd httpdocs wp maintenance-mode activate --allow-root"
-alias wpum="test -d httpdocs && cd httpdocs wp maintenance-mode deactivate --allow-root"
+alias wpm="test -d httpdocs && cd httpdocs ; wp maintenance-mode activate --allow-root"
+alias wpum="test -d httpdocs && cd httpdocs ;  wp maintenance-mode deactivate --allow-root"
 
 ### Aliases pour la modification du fichier de configuration (celui-ci)
 alias bashrc="nano ~/.bashrc"
@@ -55,7 +55,8 @@ alias mbashrc="micro ~/.bashrc"
 alias saverc="source ~/.bashrc"
 alias aliass="format_aliases.sh $CUSTOM_DIR/includes/alias.txt"
 alias m="micro"
-#alias maliass="cd /root/document/scripts_server && micro includes/alias.txt && ./setup.sh && cd -"
+alias malias="cd /etc/my_common/scripts_server/sources && micro alias_source.sh"
+#alias maliass="cd /etc/my_common/scripts_server/sources && micro includes/alias.txt && ./setup.sh && cd -"
 
 alias beef="test -d httpdocs && cd httpdocs ; bee cc all"
 
