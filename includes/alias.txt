@@ -14,6 +14,7 @@ saverc  : Sauvegarder les modifications faites au fichier `.bashrc`
 maliass : Éditer ce fichier de liste des alias
 aliass  : Alias qui affiche uniquement les alias que l’on a créés
 alias   : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants
+malias  : Éditer le fichier alias_source.sh où sont déclarés les alias
 
 === Commandes spécifiques client ===
 impots : cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
@@ -64,11 +65,13 @@ cvpatch  : Patch du core de CiviCRM, depuis GitHub
 wpf     : Vider le cache de WordPress
 wpdeb   : Activer le mode debug
 wpudeb  : Désactiver le mode debug
+wpm    : Mettre en mode maintenance
+wpum   : Désactiver le mode maintenance
+wpc    : Utiliser wp en mode --alow-root - à compléter avec la commande souhaitée
 
 === Gérer les extensions WordPress d’une instance ===
 wpgc   : `git clone` + activation de l’extension WordPress
 wpgp   : `git pull` d’une extension WordPress
-wpc    : Utiliser wp en mode --alow-root - à compléter avec la commande souhaitée
 wpi    : Installer une extension WordPress
 wpa    : Activer une extension WordPress
 wpd    : Désactiver une extension WordPress
