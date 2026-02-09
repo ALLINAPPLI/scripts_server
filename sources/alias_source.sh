@@ -29,8 +29,8 @@ alias deployprod="pnpm run build && pnpm run deploy:prod"
 ### Aliases pour le placement dans le repertoire vhosts, ou pour lancer une commande rapidement
 alias www="cd /var/www/vhosts"
 alias cl="clear"
-### Aliases pour les commandes du cli  "wp"
 
+### Aliases pour les commandes du cli  "wp"
 alias wpa="test -d httpdocs && cd httpdocs ; wp plugin activate "$1" --allow-root"
 alias wpd="test -d httpdocs && cd httpdocs ; wp plugin deactivate "$1" --allow-root"
 
@@ -46,6 +46,8 @@ alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root
 alias wpi="test -d httpdocs && cd httpdocs ; wp plugin install "$1" --allow-root --activate"
 alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
 alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
+alias wpm="test -d httpdocs && cd httpdocs wp maintenance-mode activate --allow-root"
+alias wpum="test -d httpdocs && cd httpdocs wp maintenance-mode deactivate --allow-root"
 
 ### Aliases pour la modification du fichier de configuration (celui-ci)
 alias bashrc="nano ~/.bashrc"
