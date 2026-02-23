@@ -14,6 +14,7 @@ saverc  : Sauvegarder les modifications faites au fichier `.bashrc`
 maliass : Éditer ce fichier de liste des alias
 aliass  : Alias qui affiche uniquement les alias que l’on a créés
 alias   : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants
+scripts : pour se placer à la racine de /etc/my_common/scripts_server/
 
 === Commandes spécifiques client ===
 impots : cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
