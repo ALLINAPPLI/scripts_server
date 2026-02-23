@@ -1,8 +1,8 @@
 ###*** Liste des Aliases ***###
 
 # Acceder au dossier scripts/
-alias scripts="cd /etc/my_common/scripts_serveur/scripts"
-alias cmd="/root/custom_cmds/includes"
+alias scripts="cd /etc/my_common/scripts_server/scripts"
+alias cmd="/etc/my_common/scripts_server/includes"
 
 ### Aliases pour lancer un des scripts
 # alias clone="cd /home/scripts ; ./clonage.sh" ## Lancement du script de clonage d'instances
