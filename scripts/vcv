@@ -8,8 +8,9 @@
 ##  Instance |  CMS  | Version | CiviCRM | PHP | Smarty  
 ##
 #############################################################
-# source "$CUSTOM_DIR/includes/functions.sh"
-source "/etc/my_common/scripts_server/includes/functions.sh" # TODO  mettre CUSTOM_DIR
+source "$CUSTOM_DIR/includes/functions.sh"
+# echo "CUSTOM_DIR = $CUSTOM_DIR"
+# source "/etc/my_common/scripts_server/includes/functions.sh" 
 
 RED="\033[0;31m"
 GREEN="\033[0;32m"
