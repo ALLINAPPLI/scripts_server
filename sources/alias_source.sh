@@ -1,7 +1,7 @@
 ###*** Liste des Aliases ***###
 
 # Acceder au dossier scripts/
-alias scripts="cd /home/scripts"
+alias scripts="cd /etc/my_common/scripts_serveur/scripts"
 alias cmd="/root/custom_cmds/includes"
 
 ### Aliases pour lancer un des scripts
@@ -33,16 +33,12 @@ alias deployprod="pnpm run build && pnpm run deploy:prod"
 
 
 ### Alias pour réparer les droits sur toutes les instances
-alias repall="plesk repair fs -y"
+#alias repall="plesk repair fs -y"
 
 ### Aliases pour le placement dans le repertoire vhosts, ou pour lancer une commande rapidement
 alias www="cd /var/www/vhosts"
 alias cl="clear"
 ### Aliases pour les commandes du cli  "wp"
-# function wpf()
-# {
-#     wp cache --allow-root flush && rep
-# }
 
 alias wpa="test -d httpdocs && cd httpdocs ; wp plugin activate "$1" --allow-root"
 alias wpd="test -d httpdocs && cd httpdocs ; wp plugin deactivate "$1" --allow-root"
@@ -52,7 +48,7 @@ wpu() {
 	wp plugin deactivate "$1" --allow-root;
 	wp plugin uninstall "$1" --allow-root
 }
-
+alias wpc="test -d httpdocs && cd httpdocs ; wp --allow-root"
 alias wpf="test -d httpdocs && cd httpdocs ; wp cache --allow-root flush"
 alias wpl="test -d httpdocs && cd httpdocs ; wp plugin list --allow-root"
 alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root" 
@@ -73,3 +69,5 @@ alias beef="test -d httpdocs && cd httpdocs ; bee cc all"
 alias dm="test -d httpdocs && cd httpdocs ; drush vset site_offline 1 && drush cache-clear all"
 alias dum="test -d httpdocs && cd httpdocs ; drush vset site_offline 0 && drush cache-clear all"
 
+## Alias pour les commandes de gérer Mattermost dans Docker via mmctl
+alias mm="docker exec -ti docker-mattermost-1 mmctl --local"
