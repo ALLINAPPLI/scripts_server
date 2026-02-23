@@ -1,6 +1,6 @@
 ###*** Liste des Aliases ***###
 
-# Acceder au dossier scripts/
+# Accéder au dossier scripts/
 alias scripts="cd /etc/my_common/scripts_server/scripts"
 alias cmd="/etc/my_common/scripts_server/includes"
 
@@ -35,10 +35,10 @@ alias deployprod="pnpm run build && pnpm run deploy:prod"
 ### Alias pour réparer les droits sur toutes les instances
 #alias repall="plesk repair fs -y"
 
-### Aliases pour le placement dans le repertoire vhosts, ou pour lancer une commande rapidement
+### Aliases pour le placement dans le répertoire vhosts, ou pour lancer une commande rapidement
 alias www="cd /var/www/vhosts"
 alias cl="clear"
-### Aliases pour les commandes du cli  "wp"
+### Aliases pour les commandes du cli "wp"
 
 alias wpa="test -d httpdocs && cd httpdocs ; wp plugin activate "$1" --allow-root"
 alias wpd="test -d httpdocs && cd httpdocs ; wp plugin deactivate "$1" --allow-root"
@@ -53,6 +53,10 @@ alias wpf="test -d httpdocs && cd httpdocs ; wp cache --allow-root flush"
 alias wpl="test -d httpdocs && cd httpdocs ; wp plugin list --allow-root"
 alias wpup="test -d httpdocs && cd httpdocs ; wp plugin update "$1" --allow-root" 
 alias wpi="test -d httpdocs && cd httpdocs ; wp plugin install "$1" --allow-root --activate"
+alias wpm0="test -d httpdocs && cd httpdocs ; wp maintenance-mode deactivate --allow-root" 
+alias wpm1="test -d httpdocs && cd httpdocs ; wp maintenance-mode activate --allow-root"
+alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
+alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
 
 ### Aliases pour la modification du fichier de configuration (celui-ci)
 alias bashrc="nano ~/.bashrc"
@@ -62,12 +66,12 @@ alias aliass="format_aliases.sh $CUSTOM_DIR/includes/alias.txt"
 alias m="micro"
 alias maliass="cd /etc/my_common/scripts_server/includes && micro alias.txt && ./setup.sh && cd -"
 
-alias wpdeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG true --allow-root && wp config set --raw WP_DEBUG_DISPLAY true --allow-root"
-alias wpudeb="test -d httpdocs && cd httpdocs ; wp config set --raw WP_DEBUG false --allow-root && wp config set --raw WP_DEBUG_DISPLAY false --allow-root"
+## Alias pour les commandes du cli de Backdrop
 alias beef="test -d httpdocs && cd httpdocs ; bee cc all"
 
+## Alias pour les commandes de drush
 alias dm="test -d httpdocs && cd httpdocs ; drush vset site_offline 1 && drush cache-clear all"
 alias dum="test -d httpdocs && cd httpdocs ; drush vset site_offline 0 && drush cache-clear all"
 
 ## Alias pour les commandes de gérer Mattermost dans Docker via mmctl
-alias mm="docker exec -ti docker-mattermost-1 mmctl --local"
+alias mm="docker exec -ti docker-mattermost-1 mmctl --local" ## pour Mattermost Réseau-oudinot sur CB5
