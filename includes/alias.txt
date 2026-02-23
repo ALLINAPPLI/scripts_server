@@ -4,7 +4,7 @@ cl      : clear
 
 === Plesk utils ===
 rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
-repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
+repall     : (Désactivé) Lancement de la commande `plesk-repair` sur l’ensemble des instances
 getplesksite : Récupération du nom de  l’instance en cours
 
 === Accès aux fichiers ===
@@ -70,6 +70,7 @@ wpgc   : `git clone` + activation de l’extension WordPress
 wpgp   : `git pull` d’une extension WordPress
 wpi    : Installer une extension WordPress
 wpa    : Activer une extension WordPress
+wpc    : Utiliser la commande wp cli en tant que root
 wpd    : Désactiver une extension WordPress
 wpu    : Désinstaller une extension WordPress
 wpup   : Mettre à jour une extension WordPress
@@ -84,3 +85,6 @@ beef   : Vider le cache de Backdrop
 === Gérer une instance Drupal ===
 dm     : mettre en maintenance
 dum    : retirer la maintenance 
+
+=== Gérer Mattermost ===
+mm     : Lance le CLI pour reseau oudinot 
