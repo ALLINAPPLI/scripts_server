@@ -5,7 +5,7 @@ cl      : clear
 === Plesk utils ===
 rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
 repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
-getplesksite : Récupération du nom de  l’instance en cours
+getplesksite : Récupération du nom de l’instance en cours
 
 === Accès aux fichiers ===
 bashrc  : Accéder au fichier `.bashrc` via `nano`
@@ -65,6 +65,7 @@ cvall --cancel : annule la dernière opération de cvall dans l'instance
 wpf     : Vider le cache de WordPress
 wpdeb   : Activer le mode debug
 wpudeb  : Désactiver le mode debug
+wpc     : Utiliser le cli en mode --allow-root
 
 === Gérer les extensions WordPress d’une instance ===
 wpgc   : `git clone` + activation de l’extension WordPress
@@ -86,5 +87,5 @@ beef   : Vider le cache de Backdrop
 dm     : mettre en maintenance
 dum    : retirer la maintenance 
 
-=== Gérer une instance Mattermost / chat.reseau-oudinot.com
-mattermost
+=== Gérer une instance Mattermost
+mm     : pour chat.reseau-oudinot.com
