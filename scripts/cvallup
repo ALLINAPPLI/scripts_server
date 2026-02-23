@@ -1,9 +1,15 @@
 #!/bin/bash
-source "/$CUSTOM_DIR/sources/utils.sh"
-source "/$CUSTOM_DIR/sources/cv_source.sh"
+shopt -s expand_aliases 						# "bash, active les alias s'il te plaît"
+source "$CUSTOM_DIR/sources/alias_source.sh"	# charge les alias
+source "$CUSTOM_DIR/sources/utils.sh"
+source "$CUSTOM_DIR/sources/cv_source.sh"
+# source "/etc/my_common/scripts_server/sources/utils.sh"
+# source "/etc/my_common/scripts_server/sources/cv_source.sh"
 
 ### commande pour mettre à jour toutes les extensions d'une instance CiviCRM en lot
 function cvallup() {
+	# echo "cvallup"
+	
 	test -d httpdocs && cd httpdocs
 	extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
         | grep '|' \
@@ -16,8 +22,11 @@ function cvallup() {
 		cv ext:enable "$ele"
 	done
 
-	cv updb && rep
+	# echo "cvallup > Call cvup"
+	cvup && rep							# maintenant cvup fonctionne dans le script !
 	echo -e "${BLUE}Extensions de CiviCRM mises à jour${NC}" ; echo -e " "
 }
 
-cvallup $@
+cvallup $@ 
+# $@ représente tous les arguments passés au script lors de son appel.
+# Ce qui permete de mettre tous les extension qu'on veut (exemple : $@ contiendar arg1 arg2 arg3)
