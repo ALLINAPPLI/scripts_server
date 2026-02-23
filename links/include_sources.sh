@@ -15,9 +15,9 @@ else
     # exit $?
 fi
 
-export PATH="$PATH:/etc/my_common/bin:/etc/my_common/officialbin"
+export PATH="$PATH:/etc/my_common/scripts_server/scripts:/etc/my_common/officialbin"
 export PATH="/opt/plesk/php/8.3/bin:$PATH"
-export CUSTOM_DIR="/etc/my_common"
+export CUSTOM_DIR="/etc/my_common/scripts_server"
 export racine="/var/www/vhosts"
 export GREEN='\e[1;38;5;2m'
 export BLACK='\e[1;90m'
@@ -31,8 +31,8 @@ export GREY='\e[90m'
 export NC='\e[0m'
 
 
-for ele in $(ls /etc/my_common/sources); do
-    fullpath="/etc/my_common/sources/$ele"
+for ele in $(ls /etc/my_common/scripts_server/sources); do
+    fullpath="/etc/my_common/scripts_server/sources/$ele"
     if [ -r "$fullpath" ]; then
         if [ "$PS1" ]; then
             . "$fullpath"
