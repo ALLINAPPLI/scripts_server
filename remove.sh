@@ -1,21 +1,21 @@
 #!/bin/bash
 if [ -e "/etc/my_common" ]; then
-    if [ "$(ls -A "/etc/my_common/bin")" ]; then
-        for ele in /etc/my_common/bin/*; do
+    if [ "$(ls -A "/etc/my_common/scripts_server/scripts")" ]; then
+        for ele in /etc/my_common/scripts_server/scripts/*; do
             echo "removing $ele"
             rm $ele;
         done
     fi
 
-    if [ "$(ls -A "/etc/my_common/sources/")" ]; then
-        for ele in /etc/my_common/sources/*; do
+    if [ "$(ls -A "/etc/my_common/scripts_server/sources/")" ]; then
+        for ele in /etc/my_common/scripts_server/sources/*; do
             echo "removing $ele"
             rm $ele;
         done
     fi
 
-    if [ "$(ls -A "/etc/my_common/includes/")" ]; then
-        for ele in /etc/my_common/includes/*; do
+    if [ "$(ls -A "/etc/my_common/scripts_server/includes/")" ]; then
+        for ele in /etc/my_common/scripts_server/includes/*; do
             echo "removing $ele"
             rm $ele;
         done
@@ -32,8 +32,8 @@ for ele in $(ls ./links); do
     fi
 done
 
-test -e /etc/my_common/bin/ && rmdir /etc/my_common/bin/
-test -e /etc/my_common/sources && rmdir /etc/my_common/sources/
-test -e /etc/my_common/includes && rmdir /etc/my_common/includes
+test -e /etc/my_common/scripts_server/scripts/ && rmdir /etc/my_common/scripts_server/scripts/
+test -e /etc/my_common/scripts_server/sources && rmdir /etc/my_common/scripts_server/sources/
+test -e /etc/my_common/scripts_server/includes && rmdir /etc/my_common/scripts_server/includes
 test -e /etc/my_common && rmdir /etc/my_common
 exit 0

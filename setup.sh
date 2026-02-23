@@ -4,29 +4,29 @@ test -e "/etc/my_common" || {
     mkdir /etc/my_common && chmod 755 /etc/my_common
 }
 
-test -e "/etc/my_common/bin" || {
-    mkdir /etc/my_common/bin && chmod 755 /etc/my_common/bin
+test -e "/etc/my_common/scripts_server/scripts" || {
+    mkdir /etc/my_common/scripts_server/scripts && chmod 755 /etc/my_common/scripts_server/scripts
 }
 
-test -e "/etc/my_common/sources" || {
-    mkdir /etc/my_common/sources && chmod 755 /etc/my_common/sources
+test -e "/etc/my_common/scripts_server/sources" || {
+    mkdir /etc/my_common/scripts_server/sources && chmod 755 /etc/my_common/scripts_server/sources
 }
 
-test -e "/etc/my_common/includes" || {
-    mkdir /etc/my_common/includes && chmod 755 /etc/my_common/includes
+test -e "/etc/my_common/scripts_server/includes" || {
+    mkdir /etc/my_common/scripts_server/includes && chmod 755 /etc/my_common/scripts_server/includes
 }
 
 if [ -e "./scripts" ]; then
     for ele in $(ls ./scripts); do
-        cp ./scripts/$ele /etc/my_common/bin/$ele
-        chmod 755 /etc/my_common/bin/$ele
+        cp ./scripts/$ele /etc/my_common/scripts_server/scripts/$ele
+        chmod 755 /etc/my_common/scripts_server/scripts/$ele
     done
 fi
 
 if [ -e "./sources" ]; then
     for ele in $(ls ./sources); do
-        cp ./sources/$ele /etc/my_common/sources/$ele
-        chmod 755 /etc/my_common/sources/$ele
+        cp ./sources/$ele /etc/my_common/scripts_server/sources/$ele
+        chmod 755 /etc/my_common/scripts_server/sources/$ele
     done
 fi
 
@@ -39,7 +39,7 @@ fi
 
 if [ -e "./includes" ]; then
     for ele in $(ls ./includes); do
-        cp ./includes/$ele /etc/my_common/includes/$ele
-        chmod 755 /etc/my_common/includes/$ele
+        cp ./includes/$ele /etc/my_common/scripts_server/includes/$ele
+        chmod 755 /etc/my_common/scripts_server/includes/$ele
     done
 fi
