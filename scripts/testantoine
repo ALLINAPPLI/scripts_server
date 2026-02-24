@@ -1,0 +1,8 @@
+#!/bin/bash
+
+main() {
+    echo "TEst"
+    echo "CUSTOM_DIR = $CUSTOM_DIR"
+}
+
+main
