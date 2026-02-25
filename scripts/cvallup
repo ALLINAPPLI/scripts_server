@@ -23,7 +23,7 @@ function cvallup() {
 	done
 
 	# echo "cvallup > Call cvup"
-	cvup && rep							# maintenant cvup fonctionne dans le script !
+	cvup ; rep							# maintenant cvup fonctionne dans le script !
 	echo -e "${BLUE}Extensions de CiviCRM mises à jour${NC}" ; echo -e " "
 }
 
