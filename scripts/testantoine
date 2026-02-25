@@ -1,8 +1,19 @@
 #!/bin/bash
 
+source "$CUSTOM_DIR/includes/functions.sh"
+
 main() {
     echo "TEst"
     echo "CUSTOM_DIR = $CUSTOM_DIR"
+
+    # # Tester recalculer_serialisation
+    # local my_common="${CUSTOM_DIR%/scripts_server}"
+    # echo "my_common = $my_common"
+
+    # local mysql_source_database="$my_common/TMP/civicrm_setting"
+    # echo "mysql_source_database = $mysql_source_database"
+
+    # recalculer_serialisation "$mysql_source_database.sql"
 }
 
 main
