@@ -122,12 +122,52 @@ remplacementURL_BDD() {
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/prof.`echo $folder_source`/prof.`echo $folder_destination`/g" $mysql_source_database.sql
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/mediateurs.`echo $folder_source`/mediateurs.`echo $folder_destination`/g" $mysql_source_database.sql
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/familles.`echo $folder_source`/familles.`echo $folder_destination`/g" $mysql_source_database.sql
-       
+
+        ## Recalcul des longueurs dans les chaînes sérialisées PHP
+        echo -e "${BLUE}[ INFO ]${NC} Recalcul des longueurs de chaînes sérialisées ..."
+        recalculer_serialisation "$mysql_source_database.sql"
+
     else 
         echo -e ">> [${RED}ERREUR${NC}] "$mysql_source_database.sql" n'existe pas"
         exit 0
     fi
 }
+recalculer_serialisation() {
+    local fichier="$1"
+    # local fichier_tmp="${fichier}.reserial.tmp"
+
+    # cp "$fichier" "$fichier_tmp"
+
+    # Extraire toutes les chaînes sérialisées uniques du fichier (guillemets échappés)
+    grep -oP 's:\d+:\\"[^\\"]*\\";' "$fichier" | sort -u | while IFS= read -r token; do
+        # Extraire la chaîne entre \"...\"
+        str=$(echo "$token" | grep -oP '(?<=\\")[^\\"]*(?=\\")')
+
+        # Calculer la longueur en octets
+        len=$(echo -n "$str" | wc -c)
+
+        # Reconstruire le bon token
+        new_token="s:${len}:\\\"${str}\\\";"
+
+        # Remplacer dans le fichier uniquement si différent
+        if [ "$token" != "$new_token" ]; then
+            token_escaped=$(echo "$token" | sed 's|[&/\]|\\&|g')
+            new_token_escaped=$(echo "$new_token" | sed 's|[&/\]|\\&|g')
+            sed -i "s|${token_escaped}|${new_token_escaped}|g" "$fichier"
+        fi
+    done
+    if [ $? -eq 0 ]; then
+        # mv "$fichier_tmp" "$fichier"
+        echo -e "${GREEN}[ OK ]${NC} Longueurs sérialisées recalculées."
+    else
+        echo -e "${RED}[ ERREUR ]${NC} Échec du recalcul de la sérialisation."
+        # rm -f "$fichier_tmp"
+        exit 1
+    fi
+
+   
+}
+
 
 
 ## Test CMS - Drupal
