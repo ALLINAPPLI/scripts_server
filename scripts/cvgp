@@ -27,7 +27,7 @@ function cvgp() {
     fi
 
     if [ "$cms_instance" == "backdrop" ]; then
-    	cd $racine/$instance/files/civicrm/ext && git pull "$1"    	    	
+    	cd $racine/$instance/files/civicrm/ext && git pull "$1"
     fi
     echo -e "L'extension \033[32m$extension\033[0m a été mise à jour"
     rep
