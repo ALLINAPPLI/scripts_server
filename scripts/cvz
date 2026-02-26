@@ -1,0 +1,116 @@
+#!/bin/bash
+
+source "$CUSTOM_DIR/sources/utils.sh"
+source "$CUSTOM_DIR/sources/cv_source.sh"
+
+######################################################################
+##
+## Créer par Antoine BREHRERET
+##
+######################################################################
+##
+##  Permet d'installer une extension qui se télécharge en zip.
+##  On peut mettre plusieur argument pour plusieurs extension zipper.
+##
+######################################################################
+
+function cvz() {
+    if [[ -z "$1" ]]; then
+        printf "${RED}Usage: cvz <url1> [url2] [url3] ...${NC}\n"
+        return 1
+    fi
+
+    echo "━━━━━━━━━━━━━━━━ DEB CVZ ━━━━━━━━━━━━━━━━━━━━━"
+    # Déclarer les variables pour l'affichage global
+    local count_ok=0
+    local count_err=0
+    local liste_ok=()
+    local liste_err=()
+
+    for url in "$@"; do
+        echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+        echo "📦 Traitement de : $url"
+
+        local fichier_zip="${url##*/}"
+        echo "📄 Fichier zip : $fichier_zip"
+
+        echo "📁 Déplacement vers le répertoire des extensions..."
+        cd_dir_cvextension
+        echo "📍 Répertoire actuel : $(pwd)"
+
+        echo "⬇️  Téléchargement..."
+        if ! wget "$url"; then
+            echo "❌ Échec du téléchargement pour $url"
+            ((count_err++))
+            liste_err+=("$fichier_zip (téléchargement échoué)")
+            continue
+        fi
+
+        # Récupérer le vrai nom du dossier créé par unzip
+        local nom_dossier=$(unzip -Z1 "$fichier_zip" | head -1 | cut -d'/' -f1)
+        local nom_extension="${nom_dossier%%-*}"
+        echo "📂 Dossier décompressé : $nom_dossier"
+        echo "🔑 Nom extension : $nom_extension"
+
+        echo "📂 Décompression du zip $fichier_zip..."
+        if ! unzip "$fichier_zip"; then
+            echo "❌ Échec de la décompression de $fichier_zip"
+            rm -f "$fichier_zip"
+            ((count_err++))
+            liste_err+=("$nom_extension (décompression échouée)")
+            continue
+        fi
+
+        echo "🗑️  Suppression du zip $fichier_zip..."
+        rm "$fichier_zip"
+
+        # # Renommer le dossier si nécessaire
+        # if [[ "$nom_dossier" != "$nom_extension" ]]; then
+        #     echo "📝 Renommage du dossier : $nom_dossier → $nom_extension"
+        #     mv "$nom_dossier" "$nom_extension"
+        # fi
+
+        echo "🔧 Réparation des droits..."
+        rep
+
+        echo "✅ Activation de l'extension avec le nom complet : $nom_dossier..."
+        if ! en "$nom_dossier"; then
+            echo "⚠️  Échec avec $nom_dossier, tentative avec le nom court : $nom_extension..."
+            if ! en "$nom_extension"; then
+                echo "❌ Échec de l'activation de $nom_extension"
+                ((count_err++))
+                liste_err+=("$nom_extension (activation échouée)")
+                continue
+            fi
+        fi
+
+        ((count_ok++))
+        liste_ok+=("$nom_extension")
+        echo "🎉 $nom_extension installée avec succès !"
+    done
+
+    local total=$(( count_ok + count_err ))
+    echo ""
+    echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+    echo "📊 Résultat : $count_ok extension(s) sur $total installée(s) avec succès"
+
+    if [[ ${#liste_ok[@]} -gt 0 ]]; then
+        echo ""
+        echo "✅ Succès :"
+        for ext in "${liste_ok[@]}"; do
+            echo "   • $ext"
+        done
+    fi
+
+    if [[ ${#liste_err[@]} -gt 0 ]]; then
+        echo ""
+        echo "❌ Échecs :"
+        for ext in "${liste_err[@]}"; do
+            echo "   • $ext"
+        done
+    fi
+
+    echo "━━━━━━━━━━━━━━━━ FIN CVZ ━━━━━━━━━━━━━━━━━━━━━"
+}
+
+cvz "$@" # on met des guillemets pour traiter les éventuelles espaces

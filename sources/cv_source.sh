@@ -31,6 +31,34 @@ testCMS() {
     cd $prev_pwd
 }
 
+# Se posiotnner su rle repertoire ext du civicrm en fonciton du cms
+cd_dir_cvextension(){
+    test -d httpdocs && cd httpdocs
+    instance=$(getplesksite)
+    testCMS
+    local path_ext=""
+
+    echo "CMS : $cms_instance"
+
+    if [ "$cms_instance" == "wordpress" ]; then
+        path_ext=$racine/$instance/wp-content/uploads/civicrm/ext
+    fi
+    if [ "$cms_instance" == "drupal" ]; then
+        path_ext=$racine/$instance/sites/default/files/civicrm/ext
+    fi
+    if [ "$cms_instance" == "standalone" ]; then
+        path_ext=$racine/$instance/ext
+    fi
+    if [ "$cms_instance" == "backdrop" ]; then
+    	path_ext=$racine/$instance/files/civicrm/ext
+    fi
+
+     echo "path_ext : $path_ext"
+
+    cd "$path_ext"
+}
+
+
 fonction_test() {
     select_and_testCMS
 
