@@ -74,14 +74,11 @@ function cvz() {
         rep
 
         echo "✅ Activation de l'extension avec le nom complet : $nom_dossier..."
-        if ! en "$nom_dossier"; then
-            echo "⚠️  Échec avec $nom_dossier, tentative avec le nom court : $nom_extension..."
-            if ! en "$nom_extension"; then
-                echo "❌ Échec de l'activation de $nom_extension"
-                ((count_err++))
-                liste_err+=("$nom_extension (activation échouée)")
-                continue
-            fi
+        if ! en "$nom_extension"; then
+            echo "❌ Échec de l'activation de $nom_extension"
+            ((count_err++))
+            liste_err+=("$nom_extension (activation échouée)")
+            continue
         fi
 
         ((count_ok++))
