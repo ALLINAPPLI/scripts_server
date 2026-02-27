@@ -53,7 +53,7 @@ function cvz() {
         echo "🔑 Nom extension : $nom_extension"
 
         echo "📂 Décompression du zip $fichier_zip..."
-        if ! unzip "$fichier_zip"; then
+        if ! unzip -q "$fichier_zip"; then
             echo "❌ Échec de la décompression de $fichier_zip"
             rm -f "$fichier_zip"
             ((count_err++))
@@ -64,11 +64,11 @@ function cvz() {
         echo "🗑️  Suppression du zip $fichier_zip..."
         rm "$fichier_zip"
 
-        # # Renommer le dossier si nécessaire
-        # if [[ "$nom_dossier" != "$nom_extension" ]]; then
-        #     echo "📝 Renommage du dossier : $nom_dossier → $nom_extension"
-        #     mv "$nom_dossier" "$nom_extension"
-        # fi
+        # Renommer le dossier si nécessaire
+        if [[ "$nom_dossier" != "$nom_extension" ]]; then
+            echo "📝 Renommage du dossier : $nom_dossier → $nom_extension"
+            mv "$nom_dossier" "$nom_extension"
+        fi
 
         echo "🔧 Réparation des droits..."
         rep
@@ -94,22 +94,24 @@ function cvz() {
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
     echo "📊 Résultat : $count_ok extension(s) sur $total installée(s) avec succès"
 
-    if [[ ${#liste_ok[@]} -gt 0 ]]; then
-        echo ""
-        echo "✅ Succès :"
-        for ext in "${liste_ok[@]}"; do
-            echo "   • $ext"
-        done
-    fi
+    # Si plus d'une d'url on affiche le détail
+    if [[ $# -gt 1 ]]; then
+        if [[ ${#liste_ok[@]} -gt 0 ]]; then
+            echo ""
+            echo "✅ Succès :"
+            for ext in "${liste_ok[@]}"; do
+                echo "   • $ext"
+            done
+        fi
 
-    if [[ ${#liste_err[@]} -gt 0 ]]; then
-        echo ""
-        echo "❌ Échecs :"
-        for ext in "${liste_err[@]}"; do
-            echo "   • $ext"
-        done
+        if [[ ${#liste_err[@]} -gt 0 ]]; then
+            echo ""
+            echo "❌ Échecs :"
+            for ext in "${liste_err[@]}"; do
+                echo "   • $ext"
+            done
+        fi
     fi
-
     echo "━━━━━━━━━━━━━━━━ FIN CVZ ━━━━━━━━━━━━━━━━━━━━━"
 }
 
