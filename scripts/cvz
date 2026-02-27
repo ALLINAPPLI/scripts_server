@@ -73,7 +73,7 @@ function cvz() {
         echo "🔧 Réparation des droits..."
         rep
 
-        echo "✅ Activation de l'extension avec le nom complet : $nom_dossier..."
+        echo "✅ Activation de l'extension avec le nom complet : $nom_extension..."
         if ! en "$nom_extension"; then
             echo "❌ Échec de l'activation de $nom_extension"
             ((count_err++))
