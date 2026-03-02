@@ -1,0 +1,71 @@
+#!/bin/bash
+##
+## Développé par Antoine BREHERET
+##
+#############################################################
+##
+##  Reparer une base de données
+##
+#############################################################
+
+source $CUSTOM_DIR/includes/functions_civicrm.sh
+source $CUSTOM_DIR/includes/functions.sh
+source $CUSTOM_DIR/includes/clone_functions_utils.sh
+
+# Activer l’expansion des alias dans le shell courant.
+shopt -s expand_aliases
+
+vhosts="$racine"
+
+echo -e '\e[93m=============================================\033[0m'
+echo "Choisissez l'instance à mettre à jour parmi les domaines disponibles : "
+listSite=($(getcvsites | sort))
+select instance in "${listSite[@]}"; do break; done
+[ -z "$instance" ] && echo -e "${RED}[ ERREUR ]${NC} Instance invalide" && exit 1
+
+echo -e '\e[93m=============================================\033[0m'
+echo -e "L'instance cible choisie est : ${GREEN}$instance${NC}"
+folder_source=$(get_site_root $instance)
+# echo -e "Le dossier de l'instance cible choisie est : ${GREEN}$folder_source${NC}"
+# echo -e "Le vhosts  est : ${GREEN}$vhosts${NC}"
+pathfolder="$vhosts/$instance"
+# echo -e "Le pathfolder  est : ${GREEN}$pathfolder${NC}"
+cd $pathfolder
+echo "le dossier actuel ; $(pwd)"
+
+echo "⬆️💾 Backup de la Base ... "
+timestamp=$(date +"%Y%m%d%H%M%S")
+# Nom du fichier
+instance_clean=$(sed 's/[^a-zA-Z0-9]/_/g' <<< "$instance")
+dumpfile="${timestamp}_${instance_clean}.sql"
+echo "le dumpfile : $dumpfile"
+
+echo "⬆️💾 Backup de la Base dans le fichier $dumpfile ... "
+dump > $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Dump échoué" ; exit 1; }
+# echo "🧹recalculer_serialisation"
+# recalculer_serialisation $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Sérialisation échouée" ; exit 1; }
+echo -n "🧹 Recalcul des sérialisations ..."
+recalculer_serialisation $dumpfile &
+pid=$!
+
+spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
+i=0
+while kill -0 $pid 2>/dev/null; do
+    echo -ne "\r🧹 Recalcul des sérialisations ... ${spinner[$i]}"
+    i=$(( (i+1) % 10 ))
+    sleep 0.1
+done
+
+wait $pid
+if [ $? -eq 0 ]; then
+    echo -e "\r🧹 Recalcul des sérialisations ... ${GREEN}✔ OK${NC}"
+else
+    echo -e "\r🧹 Recalcul des sérialisations ... ${RED}✘ Échoué${NC}"
+    exit 1
+fi
+echo "⬇️💾 Restore de la Base ... "
+dump < $dumpfile > /dev/null 2>&1 || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
+# dump < $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
+echo "🗑️ supprimer le backup $dumpfile  ... "
+rm  $dumpfile
+

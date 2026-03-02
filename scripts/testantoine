@@ -6,7 +6,15 @@ main() {
     echo "TEst"
     echo "CUSTOM_DIR = $CUSTOM_DIR"
 
+    # echo -e '\e[93m=============================================\033[0m'
+    # echo "Choisissez l'instance à mettre à jour parmi les domaines disponibles : "
+    # listSite=($(getcvsites | sort))
+    # select instance in "${listSite[@]}"; do break; done
+    # [ -z "$instance" ] && echo -e "${RED}[ ERREUR ]${NC} Instance invalide" && exit 1
+
+
     # # Tester recalculer_serialisation
+    recalculer_serialisation "/var/www/vhosts/vps1.gestad.net/20260227091059_vps1_gestad_net.sql"
     # local my_common="${CUSTOM_DIR%/scripts_server}"
     # echo "my_common = $my_common"
 
