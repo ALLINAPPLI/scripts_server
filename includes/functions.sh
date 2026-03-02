@@ -132,7 +132,7 @@ remplacementURL_BDD() {
         exit 0
     fi
 }
-recalculer_serialisation() {
+recalculer_serialisation_old() {
     local fichier="$1"
     # local fichier_tmp="${fichier}.reserial.tmp"
 
@@ -164,11 +164,81 @@ recalculer_serialisation() {
         # rm -f "$fichier_tmp"
         exit 1
     fi
-
-   
 }
+recalculer_serialisation_bash() {
+    local fichier="$1"
+    local fichier_tmp="${fichier}.reserial.tmp"
 
+    cp "$fichier" "$fichier_tmp" || { echo -e "${RED}[ ERREUR ]${NC} Impossible de copier le fichier." ; exit 1; }
 
+    # Extraire toutes les chaînes sérialisées uniques du fichier (guillemets échappés)
+    while IFS= read -r token; do
+        # Extraire la chaîne entre \"...\"
+        str=$(echo "$token" | grep -oP '(?<=\\")[^\\"]*(?=\\")')
+
+        # Calculer la longueur en octets
+        len=$(echo -n "$str" | wc -c)
+
+        # Reconstruire le bon token
+        new_token="s:${len}:\\\"${str}\\\";"
+
+        # Remplacer dans le fichier tmp uniquement si différent
+        if [ "$token" != "$new_token" ]; then
+            token_escaped=$(echo "$token" | sed 's|[&/\]|\\&|g')
+            new_token_escaped=$(echo "$new_token" | sed 's|[&/\]|\\&|g')
+            sed -i "s|${token_escaped}|${new_token_escaped}|g" "$fichier_tmp"
+        fi
+    done < <(grep -oP 's:\d+:\\"[^\\"]*\\";' "$fichier" | sort -u)
+
+    # Vérifier que le fichier tmp n'est pas vide avant de remplacer
+    if [ -s "$fichier_tmp" ]; then
+        mv "$fichier_tmp" "$fichier"
+        echo -e "${GREEN}[ OK ]${NC} Longueurs sérialisées recalculées."
+    else
+        echo -e "${RED}[ ERREUR ]${NC} Fichier tmp vide, annulation."
+        rm -f "$fichier_tmp"
+        exit 1
+    fi
+}
+# Version python histoire d'accélerer
+# Python — lit le fichier une seule fois en mémoire, applique le regex en une passe, réécrit le fichier une seule fois
+recalculer_serialisation() {
+    local fichier="$1"
+
+    python3 - "$fichier" <<'EOF'
+import re
+import sys
+
+fichier = sys.argv[1]
+fichier_tmp = fichier + ".reserial.tmp"
+
+def fix_length(match):
+    str_value = match.group(1)
+    correct_length = len(str_value.encode('utf-8'))
+    return f's:{correct_length}:\\"' + str_value + '\\";"'
+
+with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
+    content = f.read()
+
+# Pattern pour guillemets échappés \"...\"
+pattern = re.compile(r's:\d+:\\"(.*?)\\";', re.DOTALL)
+fixed_content = pattern.sub(fix_length, content)
+
+with open(fichier_tmp, 'w', encoding='utf-8') as f:
+    f.write(fixed_content)
+
+print("OK")
+EOF
+
+    if [ $? -eq 0 ]; then
+        mv "${fichier}.reserial.tmp" "$fichier"
+        echo -e "${GREEN}[ OK ]${NC} Longueurs sérialisées recalculées."
+    else
+        echo -e "${RED}[ ERREUR ]${NC} Échec du recalcul de la sérialisation."
+        rm -f "${fichier}.reserial.tmp"
+        exit 1
+    fi
+}
 
 ## Test CMS - Drupal
 majValeurs_Drupal() {

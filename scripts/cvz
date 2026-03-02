@@ -21,11 +21,17 @@ function cvz() {
     fi
 
     echo "━━━━━━━━━━━━━━━━ DEB CVZ ━━━━━━━━━━━━━━━━━━━━━"
-    # Déclarer les variables pour l'affichage global
     local count_ok=0
     local count_err=0
     local liste_ok=()
     local liste_err=()
+    local extensions_a_activer=()
+
+    # ━━━━━━━━━━━━━━━━ PHASE 1 : TÉLÉCHARGEMENT & DÉCOMPRESSION ━━━━━━━━━━━━━━━━
+    echo ""
+    echo "━━━━━━━━━━━━━━━━ PHASE 1 : Téléchargement ━━━━━━━━━━━━━━━━"
+    cd_dir_cvextension
+    echo "📍 Répertoire actuel : $(pwd)"
 
     for url in "$@"; do
         echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -33,10 +39,6 @@ function cvz() {
 
         local fichier_zip="${url##*/}"
         echo "📄 Fichier zip : $fichier_zip"
-
-        echo "📁 Déplacement vers le répertoire des extensions..."
-        cd_dir_cvextension
-        echo "📍 Répertoire actuel : $(pwd)"
 
         echo "⬇️  Téléchargement..."
         if ! wget "$url"; then
@@ -46,7 +48,6 @@ function cvz() {
             continue
         fi
 
-        # Récupérer le vrai nom du dossier créé par unzip
         local nom_dossier=$(unzip -Z1 "$fichier_zip" | head -1 | cut -d'/' -f1)
         local nom_extension="${nom_dossier%%-*}"
         echo "📂 Dossier décompressé : $nom_dossier"
@@ -64,34 +65,36 @@ function cvz() {
         echo "🗑️  Suppression du zip $fichier_zip..."
         rm "$fichier_zip"
 
-        # Renommer le dossier si nécessaire
         if [[ "$nom_dossier" != "$nom_extension" ]]; then
             echo "📝 Renommage du dossier : $nom_dossier → $nom_extension"
             mv "$nom_dossier" "$nom_extension"
         fi
 
-        echo "🔧 Réparation des droits..."
-        rep
-
-        echo "✅ Activation de l'extension avec le nom complet : $nom_extension..."
-        if ! en "$nom_extension"; then
-            echo "❌ Échec de l'activation de $nom_extension"
-            ((count_err++))
-            liste_err+=("$nom_extension (activation échouée)")
-            continue
-        fi
-
-        ((count_ok++))
-        liste_ok+=("$nom_extension")
-        echo "🎉 $nom_extension installée avec succès !"
+        extensions_a_activer+=("$nom_extension")
+        echo "✅ $nom_extension prête à être activée en phase 2"
     done
 
+    # ━━━━━━━━━━━━━━━━ PHASE 2 : ACTIVATION ━━━━━━━━━━━━━━━━
+    echo ""
+    echo "━━━━━━━━━━━━━━━━ PHASE 2 : Activation ━━━━━━━━━━━━━━━━"
+    if [[ ${#extensions_a_activer[@]} -gt 0 ]]; then
+        if ! en "${extensions_a_activer[@]}"; then
+            echo "❌ Échec de l'activation des extensions"
+            liste_err+=("${extensions_a_activer[@]}")
+            count_err+=${#extensions_a_activer[@]}
+        else
+            echo "🎉 Extensions activées avec succès !"
+            liste_ok+=("${extensions_a_activer[@]}")
+            count_ok+=${#extensions_a_activer[@]}
+        fi
+    fi
+
+    # ━━━━━━━━━━━━━━━━ RÉSULTAT ━━━━━━━━━━━━━━━━
     local total=$(( count_ok + count_err ))
     echo ""
     echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
-    echo "📊 Résultat : $count_ok extension(s) sur $total installée(s) avec succès"
+    echo "📊 Résultat : ${count_ok#0} extension(s) sur ${total#0} installée(s) avec succès"
 
-    # Si plus d'une d'url on affiche le détail
     if [[ $# -gt 1 ]]; then
         if [[ ${#liste_ok[@]} -gt 0 ]]; then
             echo ""
