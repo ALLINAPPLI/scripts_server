@@ -31,41 +31,30 @@ folder_source=$(get_site_root $instance)
 pathfolder="$vhosts/$instance"
 # echo -e "Le pathfolder  est : ${GREEN}$pathfolder${NC}"
 cd $pathfolder
-echo "le dossier actuel ; $(pwd)"
+echo "Dossier actuel : $(pwd)"
 
-echo "⬆️💾 Backup de la Base ... "
+echo "⬆️💾 Sauvegarde de la base... "
 timestamp=$(date +"%Y%m%d%H%M%S")
 # Nom du fichier
 instance_clean=$(sed 's/[^a-zA-Z0-9]/_/g' <<< "$instance")
 dumpfile="${timestamp}_${instance_clean}.sql"
-echo "le dumpfile : $dumpfile"
+echo "Base exportée : $dumpfile"
 
-echo "⬆️💾 Backup de la Base dans le fichier $dumpfile ... "
+echo "⬆️💾 Sauvegarde de la base dans le fichier $dumpfile... "
 dump > $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Dump échoué" ; exit 1; }
 # echo "🧹recalculer_serialisation"
 # recalculer_serialisation $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Sérialisation échouée" ; exit 1; }
-echo -n "🧹 Recalcul des sérialisations ..."
+echo -n "🧹 Recalcul des sérialisations..."
 recalculer_serialisation $dumpfile &
-pid=$!
 
-spinner=('⠋' '⠙' '⠹' '⠸' '⠼' '⠴' '⠦' '⠧' '⠇' '⠏')
-i=0
-while kill -0 $pid 2>/dev/null; do
-    echo -ne "\r🧹 Recalcul des sérialisations ... ${spinner[$i]}"
-    i=$(( (i+1) % 10 ))
-    sleep 0.1
-done
-
-wait $pid
 if [ $? -eq 0 ]; then
-    echo -e "\r🧹 Recalcul des sérialisations ... ${GREEN}✔ OK${NC}"
+    echo -e "\r🧹 Recalcul des sérialisations... ${GREEN}✔ OK${NC}"
 else
-    echo -e "\r🧹 Recalcul des sérialisations ... ${RED}✘ Échoué${NC}"
+    echo -e "\r🧹 Recalcul des sérialisations... ${RED}✘ Échoué${NC}"
     exit 1
 fi
-echo "⬇️💾 Restore de la Base ... "
+echo "⬇️💾 Import de la base corrigée... "
 dump < $dumpfile > /dev/null 2>&1 || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
 # dump < $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
-echo "🗑️ supprimer le backup $dumpfile  ... "
+echo "🗑️ Suppression du fichier temporaire $dumpfile  ... "
 rm  $dumpfile
-
