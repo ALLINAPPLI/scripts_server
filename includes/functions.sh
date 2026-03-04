@@ -200,10 +200,11 @@ recalculer_serialisation_bash() {
         exit 1
     fi
 }
+
 # Version python histoire d'accélerer
 # Python — lit le fichier une seule fois en mémoire, applique le regex en une passe, réécrit le fichier une seule fois
 # cas problématiques courants :
-#    1. \r littéraux (qu'on a déjà traité)
+#    1. \r littéraux 
 #       s:67:"adresse\r ville";  → longueur comptée faussement
 #    2. Chaînes imbriquées — une sérialisation dans une sérialisation
 #       s:45:"a:2:{s:4:"test";s:5:"hello";}";
