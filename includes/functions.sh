@@ -202,6 +202,25 @@ recalculer_serialisation_bash() {
 }
 # Version python histoire d'accélerer
 # Python — lit le fichier une seule fois en mémoire, applique le regex en une passe, réécrit le fichier une seule fois
+# cas problématiques courants :
+#    1. \r littéraux (qu'on a déjà traité)
+#       s:67:"adresse\r ville";  → longueur comptée faussement
+#    2. Chaînes imbriquées — une sérialisation dans une sérialisation
+#       s:45:"a:2:{s:4:"test";s:5:"hello";}";
+#       Le regex peut se tromper sur les guillemets internes.
+#    3. Caractères UTF-8 multi-octets
+#        s:5:"éàü";  → é=2 octets, PHP compte en octets pas en caractères
+#       Python avec .encode('utf-8') gère ça correctement ✅
+#    4. Chaînes vides
+#       s:0:"";  → pas de problème normalement mais à vérifier
+#    5. Retours à la ligne réels \n dans la chaîne
+#       s:20:"ligne1
+#       ligne2";  → le \n compte 1 octet mais peut casser le regex sans re.DOTALL
+#   6. Caractères spéciaux SQL comme \' ou \\
+#       s:10:"l\'adresse";  → PHP compte l'apostrophe échappée différemment
+#
+# Le cas le plus piégeux reste les chaînes imbriquées — un vrai parser PHP sérialisé serait nécessaire pour les gérer parfaitement, mais en pratique dans un dump CiviCRM/WordPress c'est rarissime.
+# En pratique le script actuel est compatible Drupal, Joomla et standalone sans modification majeure. Le seul cas où tu pourrais avoir un souci est si Drupal stocke des données binaires sérialisées, ce qui est rarissime.
 recalculer_serialisation() {
     local fichier="$1"
 
@@ -212,22 +231,58 @@ import sys
 fichier = sys.argv[1]
 fichier_tmp = fichier + ".reserial.tmp"
 
-def fix_length(match):
+def calc_length(str_value):
+    """
+    Calcule la longueur en octets comme PHP strlen() le fait.
+    Chaque séquence échappée vaut 1 octet pour PHP mais 2 pour Python.
+    """
+    nb_backslash_r   = str_value.count('\\r')
+    nb_backslash_n   = str_value.count('\\n')
+    nb_backslash_t   = str_value.count('\\t')
+    nb_double_slash  = str_value.count('\\\\')
+    nb_escaped_quote = str_value.count("\\'")
+
+    length = len(str_value.encode('utf-8')) \
+           - nb_backslash_r   \
+           - nb_backslash_n   \
+           - nb_backslash_t   \
+           - nb_double_slash  \
+           - nb_escaped_quote
+
+    return length
+
+def fix_length_escaped(match):
+    """Gère les chaînes avec guillemets échappés : s:N:\\"...\\"; """
     str_value = match.group(1)
-    correct_length = len(str_value.encode('utf-8'))
-    return f's:{correct_length}:\\"' + str_value + '\\";"'
+    return 's:' + str(calc_length(str_value)) + ':\\"' + str_value + '\\";'
 
-with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
-    content = f.read()
+def fix_length_normal(match):
+    """Gère les chaînes avec guillemets normaux : s:N:"..."; """
+    str_value = match.group(1)
+    return 's:' + str(calc_length(str_value)) + ':"' + str_value + '";'
 
-# Pattern pour guillemets échappés \"...\"
-pattern = re.compile(r's:\d+:\\"(.*?)\\";', re.DOTALL)
-fixed_content = pattern.sub(fix_length, content)
+try:
+    with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
+        content = f.read()
 
-with open(fichier_tmp, 'w', encoding='utf-8') as f:
-    f.write(fixed_content)
+    # 1. Guillemets échappés \"...\"  (dans les dumps MySQL)
+    pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
+    fixed_content = pattern_escaped.sub(fix_length_escaped, content)
 
-print("OK")
+    # 2. Guillemets normaux "..."  (hors dump ou après désérialisation)
+    pattern_normal = re.compile(r's:\d+:"([^"]*?)";', re.DOTALL)
+    fixed_content = pattern_normal.sub(fix_length_normal, fixed_content)
+
+    with open(fichier_tmp, 'w', encoding='utf-8') as f:
+        f.write(fixed_content)
+
+    print("OK")
+    sys.exit(0)
+
+except Exception as e:
+    print(f"ERREUR : {e}", file=sys.stderr)
+    sys.exit(1)
+
 EOF
 
     if [ $? -eq 0 ]; then
