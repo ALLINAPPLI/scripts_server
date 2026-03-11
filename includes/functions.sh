@@ -124,7 +124,7 @@ remplacementURL_BDD() {
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/familles.`echo $folder_source`/familles.`echo $folder_destination`/g" $mysql_source_database.sql
 
         ## Recalcul des longueurs dans les chaînes sérialisées PHP
-        echo -e "${BLUE}[ INFO ]${NC} Recalcul des longueurs de chaînes sérialisées ..."
+        # echo -e "${BLUE}[ INFO ]${NC} Recalcul des longueurs de chaînes sérialisées ..."
         recalculer_serialisation "$mysql_source_database.sql"
 
     else 
@@ -224,6 +224,7 @@ recalculer_serialisation_bash() {
 # En pratique le script actuel est compatible Drupal, Joomla et standalone sans modification majeure. Le seul cas où tu pourrais avoir un souci est si Drupal stocke des données binaires sérialisées, ce qui est rarissime.
 recalculer_serialisation() {
     local fichier="$1"
+    echo -n "🧹 Recalcul des sérialisations..." "${GREEN}[ EN COURS ]${NC}"
 
     python3 - "$fichier" <<'EOF'
 import re
@@ -235,44 +236,155 @@ fichier_tmp = fichier + ".reserial.tmp"
 def calc_length(str_value):
     """
     Calcule la longueur en octets comme PHP strlen() le fait.
-    Chaque séquence échappée vaut 1 octet pour PHP mais 2 pour Python.
+    On remplace les séquences échappées par leur équivalent 1 octet
+    avant de calculer la longueur, pour éviter les chevauchements.
     """
-    nb_backslash_r   = str_value.count('\\r')
-    nb_backslash_n   = str_value.count('\\n')
-    nb_backslash_t   = str_value.count('\\t')
-    nb_double_slash  = str_value.count('\\\\')
-    nb_escaped_quote = str_value.count("\\'")
+    # On travaille sur une copie pour le calcul uniquement
+    tmp = str_value
+    # Remplacer d'abord les doubles backslash pour éviter les faux positifs
+    tmp = tmp.replace('\\\\', 'X')   # \\ -> 1 octet
+    tmp = tmp.replace('\\r',  'X')   # \r -> 1 octet
+    tmp = tmp.replace('\\n',  'X')   # \n -> 1 octet
+    tmp = tmp.replace('\\t',  'X')   # \t -> 1 octet
+    tmp = tmp.replace("\\'",  'X')   # \' -> 1 octet
+    tmp = tmp.replace('\\"',  'X')   # \" -> 1 octet
 
-    length = len(str_value.encode('utf-8')) \
-           - nb_backslash_r   \
-           - nb_backslash_n   \
-           - nb_backslash_t   \
-           - nb_double_slash  \
-           - nb_escaped_quote
+    return len(tmp.encode('utf-8'))
 
-    return length
+def is_serialized_structure(str_value):
+    """
+    Détecte si la valeur est une structure sérialisée imbriquée
+    ex: a:2:{...} ou O:4:{...} ou i:0 ou b:1
+    Ces valeurs ne doivent pas être recalculées comme des chaînes simples.
+    """
+    return bool(re.match(r'^(a:\d+:\{|O:\d+:|i:\d+|b:[01])', str_value.strip()))
 
 def fix_length_escaped(match):
     """Gère les chaînes avec guillemets échappés : s:N:\\"...\\"; """
     str_value = match.group(1)
+    if is_serialized_structure(str_value):
+        return match.group(0)  # Ne pas toucher
     return 's:' + str(calc_length(str_value)) + ':\\"' + str_value + '\\";'
 
 def fix_length_normal(match):
     """Gère les chaînes avec guillemets normaux : s:N:"..."; """
     str_value = match.group(1)
+    if is_serialized_structure(str_value):
+        return match.group(0)  # Ne pas toucher
     return 's:' + str(calc_length(str_value)) + ':"' + str_value + '";'
 
 try:
     with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
         content = f.read()
 
-    # 1. Guillemets échappés \"...\"  (dans les dumps MySQL)
+    # Détecter si le fichier est un dump MySQL (contient des \")
+    is_dump = '\\"' in content
+
+    # 1. Guillemets échappés \"...\"  (dumps MySQL)
     pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
     fixed_content = pattern_escaped.sub(fix_length_escaped, content)
 
-    # 2. Guillemets normaux "..."  (hors dump ou après désérialisation)
-    pattern_normal = re.compile(r's:\d+:"([^"]*?)";', re.DOTALL)
-    fixed_content = pattern_normal.sub(fix_length_normal, fixed_content)
+    # 2. Guillemets normaux UNIQUEMENT si ce n'est pas un dump MySQL
+    if not is_dump:
+        pattern_normal = re.compile(r's:\d+:"([^"]*?)";', re.DOTALL)
+        fixed_content = pattern_normal.sub(fix_length_normal, fixed_content)
+
+    with open(fichier_tmp, 'w', encoding='utf-8') as f:
+        f.write(fixed_content)
+
+    # print("OK")
+    sys.exit(0)
+
+except Exception as e:
+    print(f"ERREUR : {e}", file=sys.stderr)
+    sys.exit(1)
+
+EOF
+
+    if [ $? -eq 0 ]; then
+        mv "${fichier}.reserial.tmp" "$fichier"
+        echo -e "${GREEN}[ ✔ Effectué ]${NC} Longueurs sérialisées recalculées."
+    else
+        echo -e "${RED}[ ✘ ERREUR ]${NC} Échec du recalcul de la sérialisation."
+        rm -f "${fichier}.reserial.tmp"
+        exit 1
+    fi
+}
+
+reparer_serialisation_corrompue() {
+    local fichier="$1"
+
+    python3 - "$fichier" <<'EOF'
+import re
+import sys
+
+fichier = sys.argv[1]
+fichier_tmp = fichier + ".repair.tmp"
+
+def repair_serialized(content):
+    """
+    Répare les structures sérialisées PHP corrompues.
+    
+    Corruptions gérées :
+    1. ";" devant une structure sérialisée : s:4:"join";"a:2:{...}  -> s:4:\"join\";a:2:{...}
+    2. Guillemets en trop autour d'une valeur non-string : "a:2:{...}" -> a:2:{...}
+    3. Guillemets manquants autour d'une vraie string
+    4. Mélange de \" et " dans le même bloc
+    """
+
+    # Détecter si le dump utilise des guillemets échappés \"
+    escaped = '\\"' in content
+    q = '\\"' if escaped else '"'
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Cas 1 : ";" suivi d'une structure -> corriger en ";
+    # Exemple : s:4:"join";"a:2:{ -> s:4:\"join\";a:2:{
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if escaped:
+        # \";" suivi de a: s: i: b: O: N; d:
+        pattern1 = re.compile(r'\\";"\s*((?:a|O|s):\d+[:{]|[ibd]:\d*[;{]|N;)')
+        content = pattern1.sub(r'\\";\\"\1', content)
+        # En fait on veut juste supprimer le " parasite après \";
+        pattern1b = re.compile(r'(\\";)"((?:a|O|s):\d+[:{]|[ibd]:\d*[;{]|N;)')
+        content = pattern1b.sub(r'\1\2', content)
+    else:
+        pattern1 = re.compile(r'";"((?:a|O|s):\d+[:{]|[ibd]:\d*[;{]|N;)')
+        content = pattern1.sub(r'";\1', content)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Cas 2 : guillemets autour d'une structure : "a:2:{...}"
+    # Exemple : s:4:\"join\";\"a:2:{...}\" -> s:4:\"join\";a:2:{...}
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if escaped:
+        pattern2 = re.compile(r'\\"((?:a|O):\d+:\{.*?\})\\"', re.DOTALL)
+        content = pattern2.sub(r'\1', content)
+    else:
+        pattern2 = re.compile(r'"((?:a|O):\d+:\{.*?\})"', re.DOTALL)
+        content = pattern2.sub(r'\1', content)
+
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    # Cas 3 : guillemets parasites devant i: b: N; d: 
+    # Exemple : ;\"i:0; -> ;i:0;
+    # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+    if escaped:
+        pattern3 = re.compile(r';\\"([ibd]:\d+;|N;)')
+        content = pattern3.sub(r';\1', content)
+        # Et supprimer le \" de fermeture après ces valeurs
+        pattern3b = re.compile(r'([ibd]:\d+;|N;)\\"')
+        content = pattern3b.sub(r'\1', content)
+    else:
+        pattern3 = re.compile(r';"([ibd]:\d+;|N;)')
+        content = pattern3.sub(r';\1', content)
+        pattern3b = re.compile(r'([ibd]:\d+;|N;)"')
+        content = pattern3b.sub(r'\1', content)
+
+    return content
+
+try:
+    with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
+        content = f.read()
+
+    fixed_content = repair_serialized(content)
 
     with open(fichier_tmp, 'w', encoding='utf-8') as f:
         f.write(fixed_content)
@@ -287,11 +399,11 @@ except Exception as e:
 EOF
 
     if [ $? -eq 0 ]; then
-        mv "${fichier}.reserial.tmp" "$fichier"
-        echo -e "${GREEN}[ OK ]${NC} Longueurs sérialisées recalculées."
+        mv "${fichier}.repair.tmp" "$fichier"
+        echo -e "${GREEN}[ OK ]${NC} Sérialisations corrompues réparées."
     else
-        echo -e "${RED}[ ERREUR ]${NC} Échec du recalcul de la sérialisation."
-        rm -f "${fichier}.reserial.tmp"
+        echo -e "${RED}[ ERREUR ]${NC} Échec de la réparation."
+        rm -f "${fichier}.repair.tmp"
         exit 1
     fi
 }
