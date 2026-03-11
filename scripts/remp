@@ -83,7 +83,7 @@ fi
 echo -e "${BLUE}[ INFO ]${NC} Remplacement des valeurs en cours..."
 sed -i "s|$ancienne_valeur|$nouvelle_valeur|g" "$mysql_source_database.sql"
 count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
-echo -n "🧹 Recalcul des sérialisations..."
+# echo -n "🧹 Recalcul des sérialisations..."
 recalculer_serialisation $mysql_source_database
 
 set_bdd_in_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp" "$mysql_source_database.sql"

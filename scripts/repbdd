@@ -42,17 +42,18 @@ echo "Base exportée : $dumpfile"
 
 echo "⬆️💾 Sauvegarde de la base dans le fichier $dumpfile... "
 dump > $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Dump échoué" ; exit 1; }
-# echo "🧹recalculer_serialisation"
+# # reparerles chaine 
+# reparer_serialisation_corrompue $dumpfile
 # recalculer_serialisation $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Sérialisation échouée" ; exit 1; }
-echo -n "🧹 Recalcul des sérialisations..."
-recalculer_serialisation $dumpfile &
+# echo -n "🧹 Recalcul des sérialisations..."
+recalculer_serialisation $dumpfile
 
-if [ $? -eq 0 ]; then
-    echo -e "\r🧹 Recalcul des sérialisations... ${GREEN}✔ OK${NC}"
-else
-    echo -e "\r🧹 Recalcul des sérialisations... ${RED}✘ Échoué${NC}"
-    exit 1
-fi
+# if [ $? -eq 0 ]; then
+#     echo -e "\r🧹 Recalcul des sérialisations... ${GREEN}✔ Effectué${NC}"
+# else
+#     echo -e "\r🧹 Recalcul des sérialisations... ${RED}✘ Échoué${NC}"
+#     exit 1
+# fi
 echo "⬇️💾 Import de la base corrigée... "
 dump < $dumpfile > /dev/null 2>&1 || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
 # dump < $dumpfile || { echo -e "${RED}[ ERREUR ]${NC} Import échoué, backup conservé : $dumpfile" ; exit 1; }
