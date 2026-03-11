@@ -43,12 +43,16 @@ vidage_bdd() {
 
 get_bdd_from_instance() {
     echo -e "${BLUE}[ INFO ]${NC} Récupération de la base de données ${GREEN}$1${NC}...";
-
+    # echo "1 dns : $1"
+    # echo "2 user : $2"
+    # echo "3 pwd: $3"
+    # echo "4 : $4"
     if [ "$4" = "--skip-triggers" ]; then
         mysqldump --skip-triggers --user="$2" --password="$3" "$1" > "$1.sql"
     else 
         mysqldump --user="$2" --password="$3" "$1" > "$1.sql"
     fi
+    echo "Backup ok  : $1.sql"
 }
 
 set_bdd_in_instance() {
