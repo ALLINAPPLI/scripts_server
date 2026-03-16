@@ -224,7 +224,7 @@ recalculer_serialisation_bash() {
 # En pratique le script actuel est compatible Drupal, Joomla et standalone sans modification majeure. Le seul cas où tu pourrais avoir un souci est si Drupal stocke des données binaires sérialisées, ce qui est rarissime.
 recalculer_serialisation() {
     local fichier="$1"
-    echo -n "🧹 Recalcul des sérialisations..." "${GREEN}[ EN COURS ]${NC}"
+    echo -en "\r🧹 Recalcul des sérialisations... ${GREEN}[ EN COURS ]${NC}"
 
     python3 - "$fichier" <<'EOF'
 import re
@@ -303,9 +303,9 @@ EOF
 
     if [ $? -eq 0 ]; then
         mv "${fichier}.reserial.tmp" "$fichier"
-        echo -e "${GREEN}[ ✔ Effectué ]${NC} Longueurs sérialisées recalculées."
+        echo -e "\r🧹 Recalcul des sérialisations... ${GREEN}[ ✔ Effectué ]${NC} Longueurs sérialisées recalculées."
     else
-        echo -e "${RED}[ ✘ ERREUR ]${NC} Échec du recalcul de la sérialisation."
+        echo -e "\r🧹 Recalcul des sérialisations... ${RED}[ ✘ ERREUR ]${NC} Échec du recalcul de la sérialisation."
         rm -f "${fichier}.reserial.tmp"
         exit 1
     fi
