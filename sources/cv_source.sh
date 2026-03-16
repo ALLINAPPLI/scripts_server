@@ -162,6 +162,29 @@ cvff() {
     cv flush && cv api4 System.flush && cv api4 System.flush triggers=1 && rep
 }
 
+#  a tester
+# ( ) → sous-shell, le cd n'affecte pas le shell parent
+# > /dev/null 2>&1 → silencer les commandes verbeuses
+# || { ... } → message d'erreur explicite si une commande échoue
+# Message informatif pour savoir où on en est
+cvffatester() {
+    ( # ( ) → sous-shell, le cd n'affecte pas le shell parent
+        [ -d httpdocs ] && cd ./httpdocs
+
+        echo -e "${BLUE}[ INFO ]${NC} Vidage des caches CiviCRM..."
+
+        # > /dev/null 2>&1 → silencer les commandes verbeuses
+        # || { ... } → message d'erreur explicite si une commande échoue
+        cv flush > /dev/null 2>&1 \
+        && cv api4 System.flush > /dev/null 2>&1 \
+        && cv api4 System.flush triggers=1 > /dev/null 2>&1 \
+        || { echo -e "${RED}[ ERREUR ]${NC} Échec du vidage des caches" ; exit 1; }
+
+        echo -e "${GREEN}[ OK ]${NC} Caches vidés."
+        rep
+    )
+}
+
 ### Script pour appliquer un patch depuis Github pour CiviCRM
 cvpatch() {
     if [ -d httpdocs ]; then

@@ -14,7 +14,7 @@ main() {
 
 
     # # Tester recalculer_serialisation
-    recalculer_serialisation "/var/www/vhosts/vps1.gestad.net/20260227091059_vps1_gestad_net.sql"
+    # recalculer_serialisation "/var/www/vhosts/vps1.gestad.net/20260227091059_vps1_gestad_net.sql"
     # local my_common="${CUSTOM_DIR%/scripts_server}"
     # echo "my_common = $my_common"
 
@@ -22,6 +22,25 @@ main() {
     # echo "mysql_source_database = $mysql_source_database"
 
     # recalculer_serialisation "$mysql_source_database.sql"
+
+
+    # # Tester sur une ligne isolée
+    # echo 's:462:\"https://syntec.civicrm.makoa.net/civicrm/contact/view/participant?id=67886&amp;cid=35684\";' | python3 -c "
+    # import re, sys
+
+    # content = sys.stdin.read()
+
+    # def fix_length_escaped(match):
+    #     str_value = match.group(1)
+    #     correct_length = len(str_value.encode('utf-8'))
+    #     print(f'DEBUG: longueur calculée = {correct_length}', file=sys.stderr)
+    #     print(f'DEBUG: longueur réelle chaîne = {len(str_value)}', file=sys.stderr)
+    #     return 's:' + str(correct_length) + ':\\\\\"' + str_value + '\\\\\";'
+
+    # pattern_escaped = re.compile(r's:\d+:\\\\\"([^\\\\\"]*?)\\\\\";', re.DOTALL)
+    # result = pattern_escaped.sub(fix_length_escaped, content)
+    # print(result)
+    # "
 }
 
 main
