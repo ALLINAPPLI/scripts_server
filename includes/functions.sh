@@ -125,7 +125,7 @@ remplacementURL_BDD() {
 
         ## Recalcul des longueurs dans les chaînes sérialisées PHP
         # echo -e "${BLUE}[ INFO ]${NC} Recalcul des longueurs de chaînes sérialisées ..."
-        recalculer_serialisation "$mysql_source_database.sql"
+        recalculer_serialisation "$mysql_source_database.sql" -v
 
     else 
         echo -e ">> [${RED}ERREUR${NC}] "$mysql_source_database.sql" n'existe pas"
@@ -201,7 +201,22 @@ recalculer_serialisation_bash() {
     fi
 }
 
-# Version python histoire d'accélerer
+# ######################################################################################################
+# recalculer_serialisation dump.sql              # Mode silencieux (pas de détails)
+# recalculer_serialisation dump.sql --verbose    # Mode détaillé (avec logs)
+# recalculer_serialisation dump.sql -v           # Même chose
+#
+# Version python histoire d'accélerer basée sur la détection des colonnes BLOB pour ne pas les traité
+# détecte les tables avec BLOB,
+# parse chaque INSERT INTO,
+# découpe les valeurs d’une ligne en respectant les guillemets,
+# ignore les colonnes BLOB,
+# recalcule seulement les champs texte qui contiennent des sérialisations PHP ou du JSON sérialisé.
+# traite les colonnes texte,
+# laisse les colonnes BLOB intactes,
+# supporte les INSERT multi-lignes,
+#
+# et recalcule les longueurs des sérialisations PHP seulement dans les champs non-BLOB.
 # Python — lit le fichier une seule fois en mémoire, applique le regex en une passe, réécrit le fichier une seule fois
 # cas problématiques courants :
 #    1. \r littéraux 
@@ -224,88 +239,406 @@ recalculer_serialisation_bash() {
 # En pratique le script actuel est compatible Drupal, Joomla et standalone sans modification majeure. Le seul cas où tu pourrais avoir un souci est si Drupal stocke des données binaires sérialisées, ce qui est rarissime.
 recalculer_serialisation() {
     local fichier="$1"
+    local verbose="0"
+
+    for arg in "$@"; do
+        if [ "$arg" = "-v" ] || [ "$arg" = "--verbose" ]; then
+            verbose="1"
+        fi
+    done
+
     echo -e "🧹 Recalcul des sérialisations... ${GREEN}[ EN COURS ]${NC}"
 
-    python3 - "$fichier" <<'EOF'
+    python3 - "$fichier" "$verbose" <<'EOF'
 import re
 import sys
+import os
 
-fichier = sys.argv[1]
+fichier     = sys.argv[1]
+verbose     = sys.argv[2] == "1"
 fichier_tmp = fichier + ".reserial.tmp"
 
-def calc_length(str_value):
-    """
-    Calcule la longueur en octets comme PHP strlen() le fait.
-    On remplace les séquences échappées par leur équivalent 1 octet
-    avant de calculer la longueur, pour éviter les chevauchements.
-    """
-    # On travaille sur une copie pour le calcul uniquement
-    tmp = str_value
-    # Remplacer d'abord les doubles backslash pour éviter les faux positifs
-    tmp = tmp.replace('\\\\', 'X')   # \\ -> 1 octet
-    tmp = tmp.replace('\\r',  'X')   # \r -> 1 octet
-    tmp = tmp.replace('\\n',  'X')   # \n -> 1 octet
-    tmp = tmp.replace('\\t',  'X')   # \t -> 1 octet
-    tmp = tmp.replace("\\'",  'X')   # \' -> 1 octet
-    tmp = tmp.replace('\\"',  'X')   # \" -> 1 octet
+# ─── Patterns ────────────────────────────────────────────────────────────────
+BLOB_COL_RE     = re.compile(r'\b(?:TINY|MEDIUM|LONG)?BLOB\b', re.IGNORECASE)
+TABLE_NAME_RE   = re.compile(r'CREATE TABLE `([^`]+)`')
+INSERT_RE       = re.compile(r'^INSERT INTO `([^`]+)`', re.IGNORECASE)
+pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
+pattern_normal  = re.compile(r's:\d+:"([^"]*?)";',       re.DOTALL)
 
-    return len(tmp.encode('utf-8'))
+# ─── Stats ───────────────────────────────────────────────────────────────────
+stats = {'changes': 0, 'tables': {}}
+
+# ─── Fonctions recalcul ──────────────────────────────────────────────────────
+def calc_length(str_value):
+    tmp = str_value
+    tmp = tmp.replace('\\\\', 'X')
+    tmp = tmp.replace('\\r',  'X')
+    tmp = tmp.replace('\\n',  'X')
+    tmp = tmp.replace('\\t',  'X')
+    tmp = tmp.replace("\\'",  'X')
+    tmp = tmp.replace('\\"',  'X')
+    try:
+        return len(tmp.encode('latin-1').decode('utf-8').encode('utf-8'))
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return len(tmp.encode('utf-8'))
 
 def is_serialized_structure(str_value):
-    """
-    Détecte si la valeur est une structure sérialisée imbriquée
-    ex: a:2:{...} ou O:4:{...} ou i:0 ou b:1
-    Ces valeurs ne doivent pas être recalculées comme des chaînes simples.
-    """
     return bool(re.match(r'^(a:\d+:\{|O:\d+:|i:\d+|b:[01])', str_value.strip()))
 
-def fix_length_escaped(match):
-    """Gère les chaînes avec guillemets échappés : s:N:\\"...\\"; """
-    str_value = match.group(1)
-    if is_serialized_structure(str_value):
-        return match.group(0)  # Ne pas toucher
-    return 's:' + str(calc_length(str_value)) + ':\\"' + str_value + '\\";'
+def make_fix_escaped(table_name):
+    def fix(match):
+        str_value = match.group(1)
+        if is_serialized_structure(str_value):
+            return match.group(0)
+        m0 = re.match(r's:(\d+):', match.group(0))
+        old_len = int(m0.group(1)) if m0 else '?'
+        new_len = calc_length(str_value)
+        if new_len != old_len:
+            stats['changes'] += 1
+            stats['tables'][table_name] = stats['tables'].get(table_name, 0) + 1
+            if verbose:
+                apercu = str_value[:60].replace('\n', '\\n').replace('\r', '\\r')
+                # if len(str_value) > 60:
+                #     apercu += '...'
+                # print('  [CHANGE] table=' + table_name + ' s:' + str(old_len) + ':\\"' + apercu + ' -> s:' + str(new_len), file=sys.stderr)
+        return 's:' + str(new_len) + ':\\"' + str_value + '\\";'
+    return fix
 
-def fix_length_normal(match):
-    """Gère les chaînes avec guillemets normaux : s:N:"..."; """
-    str_value = match.group(1)
-    if is_serialized_structure(str_value):
-        return match.group(0)  # Ne pas toucher
-    return 's:' + str(calc_length(str_value)) + ':"' + str_value + '";'
+def make_fix_normal(table_name):
+    def fix(match):
+        str_value = match.group(1)
+        if is_serialized_structure(str_value):
+            return match.group(0)
+        m0 = re.match(r's:(\d+):', match.group(0))
+        old_len = int(m0.group(1)) if m0 else '?'
+        new_len = calc_length(str_value)
+        if new_len != old_len:
+            stats['changes'] += 1
+            stats['tables'][table_name] = stats['tables'].get(table_name, 0) + 1
+            if verbose:
+                apercu = str_value[:60].replace('\n', '\\n').replace('\r', '\\r')
+                # if len(str_value) > 60:
+                #     apercu += '...'
+                # print('  [CHANGE] table=' + table_name + ' s:' + str(old_len) + ':"' + apercu + ' -> s:' + str(new_len), file=sys.stderr)
+        return 's:' + str(new_len) + ':"' + str_value + '";'
+    return fix
 
-try:
-    with open(fichier, 'r', encoding='utf-8', errors='replace') as f:
-        content = f.read()
+# ─── Pré-passe 1 : détecter le type de dump en scannant tout le fichier ──────
+print("Détection du type de dump...", file=sys.stderr)
+is_dump   = False
+chunk_size = 1024 * 1024
+with open(fichier, 'rb') as f:
+    while True:
+        chunk = f.read(chunk_size)
+        if not chunk:
+            break
+        if b'\\"' in chunk:
+            is_dump = True
+            break
+dump_type = 'MySQL escaped (\")' if is_dump else 'standard'
+print("Type dump : " + dump_type, file=sys.stderr)
 
-    # Détecter si le fichier est un dump MySQL (contient des \")
-    is_dump = '\\"' in content
+# ─── Pré-passe 2 : identifier les tables BLOB ────────────────────────────────
+print("Analyse des tables BLOB...", file=sys.stderr)
+tables_blob   = set()
+in_create     = False
+current_table = ''
+create_lines  = []
 
-    # 1. Guillemets échappés \"...\"  (dumps MySQL)
-    pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
-    fixed_content = pattern_escaped.sub(fix_length_escaped, content)
+with open(fichier, 'rb') as f:
+    for raw_line in f:
+        line = raw_line.decode('latin-1')
+        m = TABLE_NAME_RE.search(line)
+        if m:
+            in_create     = True
+            current_table = m.group(1)
+            create_lines  = [line]
+            continue
+        if in_create:
+            create_lines.append(line)
+            if line.strip().startswith(')') and 'ENGINE' in line:
+                bloc = ''.join(create_lines)
+                if BLOB_COL_RE.search(bloc):
+                    tables_blob.add(current_table)
+                in_create    = False
+                create_lines = []
 
-    # 2. Guillemets normaux UNIQUEMENT si ce n'est pas un dump MySQL
-    if not is_dump:
-        pattern_normal = re.compile(r's:\d+:"([^"]*?)";', re.DOTALL)
-        fixed_content = pattern_normal.sub(fix_length_normal, fixed_content)
+print("Tables BLOB exclues : " + str(len(tables_blob)), file=sys.stderr)
 
-    with open(fichier_tmp, 'w', encoding='utf-8') as f:
-        f.write(fixed_content)
+# ─── Passe principale : streaming ligne par ligne ─────────────────────────────
+print("Traitement des sérialisations...", file=sys.stderr)
 
-    # print("OK")
-    sys.exit(0)
+current_table = ''
+buffer_lines  = []
+in_insert     = False
 
-except Exception as e:
-    print(f"ERREUR : {e}", file=sys.stderr)
-    sys.exit(1)
+def flush_buffer(out, table_name, lines):
+    seg = ''.join(lines)
+    if table_name and table_name not in tables_blob:
+        if is_dump:
+            seg = pattern_escaped.sub(make_fix_escaped(table_name), seg)
+        else:
+            seg = pattern_normal.sub(make_fix_normal(table_name), seg)
+    out.write(seg.encode('latin-1'))
 
+with open(fichier, 'rb') as fin, open(fichier_tmp, 'wb') as fout:
+    for raw_line in fin:
+        line     = raw_line.decode('latin-1')
+        m_insert = INSERT_RE.match(line)
+
+        if m_insert:
+            if buffer_lines:
+                flush_buffer(fout, current_table, buffer_lines)
+                buffer_lines = []
+            current_table = m_insert.group(1)
+            in_insert     = True
+            buffer_lines  = [line]
+
+        elif in_insert:
+            buffer_lines.append(line)
+            stripped = line.strip()
+            if stripped.endswith(');') or stripped == '':
+                flush_buffer(fout, current_table, buffer_lines)
+                buffer_lines  = []
+                in_insert     = False
+                current_table = ''
+        else:
+            fout.write(line.encode('latin-1'))
+
+    # Flush final
+    if buffer_lines:
+        flush_buffer(fout, current_table, buffer_lines)
+
+# ─── Résumé ──────────────────────────────────────────────────────────────────
+print("\n📊 Résumé : " + str(stats['changes']) + " correction(s) effectuée(s)", file=sys.stderr)
+if stats['tables']:
+    for t, n in sorted(stats['tables'].items(), key=lambda x: -x[1]):
+        print("   • " + t + " : " + str(n) + " correction(s)", file=sys.stderr)
+
+os.replace(fichier_tmp, fichier)
+sys.exit(0)
 EOF
 
     if [ $? -eq 0 ]; then
-        mv "${fichier}.reserial.tmp" "$fichier"
         echo -e "🧹 Recalcul des sérialisations... ${GREEN}[ ✔ Effectué ]${NC} Longueurs sérialisées recalculées."
     else
-        echo -e "🧹 Recalcul des sérialisations... ${RED}[ ✘ ERREUR ]${NC} Échec du recalcul de la sérialisation."
+        echo -e "🧹 Recalcul des sérialisations... ${RED}[ ✘ ERREUR ]${NC} Échec du recalcul."
+        rm -f "${fichier}.reserial.tmp"
+        exit 1
+    fi
+}
+
+## CAs de test pour traite quand meme les tablea vec des champ blob mais en tratant les autre champ >> marcha pas 
+recalculer_serialisation_avance() {
+    local fichier="$1"
+    local verbose="0"
+
+    for arg in "$@"; do
+        if [ "$arg" = "-v" ] || [ "$arg" = "--verbose" ]; then
+            verbose="1"
+        fi
+    done
+
+    echo -e "🧹 Recalcul des sérialisations... ${GREEN}[ EN COURS ]${NC}"
+
+    python3 - "$fichier" "$verbose" <<'EOF'
+import re
+import sys
+import os
+
+fichier     = sys.argv[1]
+verbose     = sys.argv[2] == "1"
+fichier_tmp = fichier + ".reserial.tmp"
+
+# ─── Patterns ────────────────────────────────────────────────────────────────
+BLOB_COL_RE     = re.compile(r'\b(?:TINY|MEDIUM|LONG)?BLOB\b', re.IGNORECASE)
+TABLE_NAME_RE   = re.compile(r'CREATE TABLE `([^`]+)`')
+INSERT_RE       = re.compile(r'^INSERT INTO `([^`]+)`', re.IGNORECASE)
+pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
+pattern_normal  = re.compile(r's:\d+:"([^"]*?)";',       re.DOTALL)
+
+# ─── Stats ───────────────────────────────────────────────────────────────────
+stats = {'changes': 0, 'tables': {}}
+
+# ─── Fonctions recalcul ──────────────────────────────────────────────────────
+def calc_length(str_value):
+    tmp = str_value
+    tmp = tmp.replace('\\\\', 'X')
+    tmp = tmp.replace('\\r',  'X')
+    tmp = tmp.replace('\\n',  'X')
+    tmp = tmp.replace('\\t',  'X')
+    tmp = tmp.replace("\\'",  'X')
+    tmp = tmp.replace('\\"',  'X')
+    try:
+        return len(tmp.encode('latin-1').decode('utf-8').encode('utf-8'))
+    except (UnicodeDecodeError, UnicodeEncodeError):
+        return len(tmp.encode('utf-8'))
+
+def is_serialized_structure(str_value):
+    return bool(re.match(r'^(a:\d+:\{|O:\d+:|i:\d+|b:[01])', str_value.strip()))
+
+def make_fix_escaped(table_name):
+    def fix(match):
+        str_value = match.group(1)
+        if is_serialized_structure(str_value):
+            return match.group(0)
+        m0 = re.match(r's:(\d+):', match.group(0))
+        old_len = int(m0.group(1)) if m0 else '?'
+        new_len = calc_length(str_value)
+        if new_len != old_len:
+            stats['changes'] += 1
+            stats['tables'][table_name] = stats['tables'].get(table_name, 0) + 1
+            # if verbose:
+            #     apercu = str_value[:60].replace('\n', '\\n').replace('\r', '\\r')
+            #     if len(str_value) > 60:
+            #         apercu += '...'
+            #     print('  [CHANGE] table=' + table_name + ' s:' + str(old_len) + ':\\"' + apercu + ' -> s:' + str(new_len), file=sys.stderr)
+        return 's:' + str(new_len) + ':\\"' + str_value + '\\";'
+    return fix
+
+def make_fix_normal(table_name):
+    def fix(match):
+        str_value = match.group(1)
+        if is_serialized_structure(str_value):
+            return match.group(0)
+        m0 = re.match(r's:(\d+):', match.group(0))
+        old_len = int(m0.group(1)) if m0 else '?'
+        new_len = calc_length(str_value)
+        if new_len != old_len:
+            stats['changes'] += 1
+            stats['tables'][table_name] = stats['tables'].get(table_name, 0) + 1
+            # if verbose:
+            #     apercu = str_value[:60].replace('\n', '\\n').replace('\r', '\\r')
+            #     if len(str_value) > 60:
+            #         apercu += '...'
+            #     print('  [CHANGE] table=' + table_name + ' s:' + str(old_len) + ':"' + apercu + ' -> s:' + str(new_len), file=sys.stderr)
+        return 's:' + str(new_len) + ':"' + str_value + '";'
+    return fix
+
+# ─── Pré-passe 1 : détecter le type de dump ──────────────────────────────────
+print("Détection du type de dump...", file=sys.stderr)
+is_dump = False
+with open(fichier, 'rb') as f:
+    sample = f.read(512 * 1024).decode('latin-1')
+    if '\\"' in sample:
+        is_dump = True
+dump_type = 'MySQL escaped (\")' if is_dump else 'standard'
+print("Type dump : " + dump_type, file=sys.stderr)
+
+# ─── Pré-passe 2 : identifier les tables BLOB ────────────────────────────────
+print("Analyse des tables BLOB...", file=sys.stderr)
+tables_blob   = set()
+in_create     = False
+current_table = ''
+create_lines  = []
+
+with open(fichier, 'rb') as f:
+    for raw_line in f:
+        line = raw_line.decode('latin-1')
+        m = TABLE_NAME_RE.search(line)
+        if m:
+            in_create     = True
+            current_table = m.group(1)
+            create_lines  = [line]
+            continue
+        if in_create:
+            create_lines.append(line)
+            if line.strip().startswith(')') and 'ENGINE' in line:
+                bloc = ''.join(create_lines)
+                if BLOB_COL_RE.search(bloc):
+                    tables_blob.add(current_table)
+                in_create    = False
+                create_lines = []
+
+print("Tables BLOB exclues : " + str(tables_blob), file=sys.stderr)
+
+# ─── Passe principale : streaming ligne par ligne ─────────────────────────────
+print("Traitement des sérialisations...", file=sys.stderr)
+
+# ─── DEBUG : chercher la première sérialisation dans tout le fichier ──────────
+print("DEBUG - scan complet du fichier...", file=sys.stderr)
+found_at = None
+chunk_size = 1024 * 1024  # 1Mo par chunk
+offset = 0
+with open(fichier, 'rb') as f:
+    while True:
+        chunk = f.read(chunk_size)
+        if not chunk:
+            break
+        text = chunk.decode('latin-1')
+        m = pattern_normal.search(text)
+        if m:
+            found_at = offset + m.start()
+            print("DEBUG - première sérialisation trouvée à l'octet : " + str(found_at), file=sys.stderr)
+            print("DEBUG - contenu : " + repr(m.group(0)[:100]), file=sys.stderr)
+            break
+        m2 = pattern_escaped.search(text)
+        if m2:
+            found_at = offset + m2.start()
+            print("DEBUG - première sérialisation ESCAPED trouvée à l'octet : " + str(found_at), file=sys.stderr)
+            print("DEBUG - contenu : " + repr(m2.group(0)[:100]), file=sys.stderr)
+            break
+        offset += chunk_size
+
+if found_at is None:
+    print("DEBUG - AUCUNE sérialisation trouvée dans tout le fichier !", file=sys.stderr)
+    print("DEBUG - taille fichier : " + str(os.path.getsize(fichier)) + " octets", file=sys.stderr)
+
+current_table = ''
+buffer_lines  = []
+in_insert     = False
+
+def flush_buffer(out, table_name, lines):
+    seg = ''.join(lines)
+    if table_name and table_name not in tables_blob:
+        if is_dump:
+            seg = pattern_escaped.sub(make_fix_escaped(table_name), seg)
+        else:
+            seg = pattern_normal.sub(make_fix_normal(table_name), seg)
+    out.write(seg.encode('latin-1'))
+
+with open(fichier, 'rb') as fin, open(fichier_tmp, 'wb') as fout:
+    for raw_line in fin:
+        line     = raw_line.decode('latin-1')
+        m_insert = INSERT_RE.match(line)
+
+        if m_insert:
+            if buffer_lines:
+                flush_buffer(fout, current_table, buffer_lines)
+                buffer_lines = []
+            current_table = m_insert.group(1)
+            in_insert     = True
+            buffer_lines  = [line]
+
+        elif in_insert:
+            buffer_lines.append(line)
+            stripped = line.strip()
+            if stripped.endswith(');') or stripped == '':
+                flush_buffer(fout, current_table, buffer_lines)
+                buffer_lines  = []
+                in_insert     = False
+                current_table = ''
+        else:
+            fout.write(line.encode('latin-1'))
+
+    # Flush final
+    if buffer_lines:
+        flush_buffer(fout, current_table, buffer_lines)
+
+# ─── Résumé ──────────────────────────────────────────────────────────────────
+print("\n📊 Résumé : " + str(stats['changes']) + " correction(s) effectuée(s)", file=sys.stderr)
+if stats['tables']:
+    for t, n in sorted(stats['tables'].items(), key=lambda x: -x[1]):
+        print("   • " + t + " : " + str(n) + " correction(s)", file=sys.stderr)
+
+os.replace(fichier_tmp, fichier)
+sys.exit(0)
+EOF
+
+    if [ $? -eq 0 ]; then
+        echo -e "🧹 Recalcul des sérialisations... ${GREEN}[ ✔ Effectué ]${NC} Longueurs sérialisées recalculées."
+    else
+        echo -e "🧹 Recalcul des sérialisations... ${RED}[ ✘ ERREUR ]${NC} Échec du recalcul."
         rm -f "${fichier}.reserial.tmp"
         exit 1
     fi
