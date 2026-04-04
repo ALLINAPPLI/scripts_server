@@ -23,6 +23,34 @@ main() {
 
     # recalculer_serialisation "$mysql_source_database.sql"
 
+    #recalculer_serialisation "/var/www/vhosts/test1.all-in-appli.com/TEST/civicrm_setting.sql" # ok
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/de_civicrm_relationship_cache_TO_civicrm_setting.sql"
+    
+    # echo "backup_part_1"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_1.sql" -v
+    # echo "backup_part_2"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_2.sql" -v
+    # echo "backup_part_3"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_3.sql" -v
+    # echo "backup_part_4"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_4.sql" -v
+    # echo "backup_part_5"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_5.sql" -v
+    # echo "backup_part_6"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_6.sql" -v
+    # echo "backup_part_7"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_7.sql" -v
+    # echo "backup_part_8"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_8.sql" -v
+    # echo "backup_part_9"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_9.sql" -v
+    # echo "backup_part_10"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/backup_part_10.sql" -v
+
+    # echo "civicrm_setting_reseau-oudinot"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/civicrm_setting_reseau-oudinot.sql" -v
+    # echo "civicrm_setting_test1"
+    # recalculer_serialisation  "/var/www/vhosts/test1.all-in-appli.com/TEST/civicrm_setting_test1.sql" -v
 
     # # Tester sur une ligne isolée
     # echo 's:462:\"https://syntec.civicrm.makoa.net/civicrm/contact/view/participant?id=67886&amp;cid=35684\";' | python3 -c "
