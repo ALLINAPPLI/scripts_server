@@ -1,5 +1,11 @@
 #!/bin/bash
-
+# Recuperer les infomation de la bdd 
+# - Domain
+# - CMS installation
+# - Les identifiants de la BDD
+# -- BDD name
+# -- BDD USER
+# -- BDD MDP
 if [ -d httpdocs ]; then
 	cd httpdocs
 fi
