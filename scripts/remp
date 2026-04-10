@@ -1,6 +1,7 @@
 #!/bin/bash
 ##
 ## Développé par Renaud Fradin, Fawzy Elsam et Ilias Assadki
+## Amélioré par Antoine Breheret
 ##
 #############################################################
 ##
@@ -84,7 +85,7 @@ echo -e "${BLUE}[ INFO ]${NC} Remplacement des valeurs en cours..."
 sed -i "s|$ancienne_valeur|$nouvelle_valeur|g" "$mysql_source_database.sql"
 count=$(grep -o "$ancienne_valeur" "$mysql_source_database.sql" | wc -l)
 # echo -n "🧹 Recalcul des sérialisations..."
-recalculer_serialisation $mysql_source_database
+recalculer_serialisation "$mysql_source_database.sql"
 
 set_bdd_in_instance "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp" "$mysql_source_database.sql"
 
