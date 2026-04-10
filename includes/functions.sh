@@ -102,15 +102,44 @@ remplacementURL_BDD() {
     if [ -f "$mysql_source_database.sql" ]; then 
         echo -e "${BLUE}[ INFO ]${NC} Remplacement des URL de ${GREEN}$folder_source${NC} par ${GREEN}$folder_destination${NC} ..."
         sed -i "s/DEFINER=[^*]*\*/\*/g" "$mysql_source_database.sql"
-        ## Parcours et modification des URL
-        local folder_source_escaped=${folder_source//./\\.}
-        cat $mysql_source_database.sql \
-		| sed "s|$root_folder_src|$root_folder_dest|g"\
-        | sed "s|$folder_source_escaped|$folder_destination|g"\
-        | sed "s|www.$folder_source|$folder_destination|g"\
-        > $mysql_source_database.sql.tmp
-        mv $mysql_source_database.sql.tmp $mysql_source_database.sql
+        
+        # ## Parcours et modification des URL
+        # local folder_source_escaped=${folder_source//./\\.}
+        # cat $mysql_source_database.sql \
+        # | sed "s|$folder_source_escaped|$folder_destination|g"\
+        # | sed "s|www.$folder_source|$folder_destination|g"\
+        # | sed "s|www.$folder_destination|$folder_destination|g"\
+		# | sed "s|$root_folder_src|$root_folder_dest|g"\
+        # > $mysql_source_database.sql.tmp
+        # mv $mysql_source_database.sql.tmp $mysql_source_database.sql
 
+
+        # Échappement des points du domaine source pour utilisation dans sed (. devient \.)
+        local folder_source_escaped=${folder_source//./\\.}
+
+        # Demande à l'utilisateur si le domaine destination doit avoir www.
+        local reponse_www=""
+        echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : " 
+        read -r reponse_www
+        if [[ "$reponse_www" =~ ^[oO] ]]; then
+            local folder_destination_clean="www.${folder_destination#www.}"  # Ajoute www. si pas déjà présent
+        else
+            local folder_destination_clean="${folder_destination#www.}"       # Supprime www. si présent
+        fi
+
+        echo -e "${BLUE}[ INFO ]${NC} Domaine destination utilisé : $folder_destination_clean"
+
+        # Ce que fait le cat : 
+        # www.domaine_source → destination (avec ou sans www. selon choix)
+        # domaine_source → destination
+        # Remplace le chemin racine
+        cat $mysql_source_database.sql \
+        | sed "s|www\.$folder_source_escaped|$folder_destination_clean|g" \
+        | sed "s|$folder_source_escaped|$folder_destination_clean|g" \
+        | sed "s|$root_folder_src|$root_folder_dest|g" \
+        > $mysql_source_database.sql.tmp
+        # Remplace le fichier SQL original par le fichier temporaire modifié
+        mv $mysql_source_database.sql.tmp $mysql_source_database.sql
 
         ## Spécifique instance Parlemonde et ses sous-domaines : prof.parlemonde.org - mediateurs.parlemonde.org - familles.parlemonde.org     
         [[ "$folder_source" == "parlemonde.org" || "$folder_source" == "familles.sandbox.parlemonde.org" || "$folder_source" == "prof.sandbox.parlemonde.org" || "$folder_source" == "mediateurs.sandbox.parlemonde.org" || "$folder_source" == "sandbox.parlemonde.org" ]] && sed -i "s/https:\/\/prof.`echo $folder_source`/https:\/\/prof.`echo $folder_destination`/g" $mysql_source_database.sql 
@@ -127,7 +156,7 @@ remplacementURL_BDD() {
         # echo -e "${BLUE}[ INFO ]${NC} Recalcul des longueurs de chaînes sérialisées ..."
         recalculer_serialisation "$mysql_source_database.sql" -v
 
-    else 
+    else
         echo -e ">> [${RED}ERREUR${NC}] "$mysql_source_database.sql" n'existe pas"
         exit 0
     fi
@@ -978,13 +1007,26 @@ set_maintenance_mode() {
     cd "$current_pwd"
 }
 
+# Obtenir le site racine.
 get_site_root() {
 	local current_pwd=$(pwd)
-	cd $racine
-	local result=$(find -maxdepth 2 -name $1 -type d -printf "%P\n" 2> /dev/null | grep -v "logs" | grep -v "system" | grep -v ".rapid-scan-db")
-	test -d "$result/httpdocs" && result="$result/httpdocs"
-	cd $current_pwd
-	echo $result
+    cd $racine
+
+    local result=$(find -maxdepth 2 -name "$1" -type d -printf "%P\n" 2>/dev/null \
+        | grep -v "logs" \
+        | grep -v "system" \
+        | grep -v ".rapid-scan-db" \
+        | grep -v "^.\+/$1$" \
+        | head -1)
+    # Le grep -v "^.\+/$1$" exclut tous les chemins de la forme quelquechose/mon-instance.com, 
+    # ne gardant que mon-instance.com seul. 
+    # Le head -1 est une sécurité si plusieurs résultats subsistent.
+    # Ceci dans la logique q'un sous dossier du meme nom n'est pas possible.
+    # En gros qu'n sous domaine ne peut pas porter le meme nom que son domaine parent.
+
+    test -d "$result/httpdocs" && result="$result/httpdocs"
+    cd $current_pwd
+    echo "$result"
 
     # # convertir en chemin absolu
     # result="$(realpath "$racine/$result" 2>/dev/null || echo "")"
