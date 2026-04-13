@@ -74,7 +74,6 @@ get_instance_cms ()
 	local root_domain=$(get_site_root $1)
 	cd "$root_domain"
 
-
     test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2;
     test -e sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
     test -e private/civicrm.settings.php && cms_instance="standalone" && echo "Standalone installation" >&2;
@@ -115,7 +114,7 @@ get_instance_cms ()
         	fi
         };;
         *)
-            echo "No CMS !" >&2;
+            echo -e "No CMS ! sur ${RED}$1${NC} est il vide ?" >&2;
             return 1
         ;;
     esac
