@@ -118,9 +118,9 @@ remplacementURL_BDD() {
         local folder_source_escaped=${folder_source//./\\.}
 
         # Demande à l'utilisateur si le domaine destination doit avoir www.
-        local reponse_www=""
-        echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : " 
-        read -r reponse_www
+        reponse_www=""
+        echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : "
+        read reponse_www < /dev/tty
         if [[ "$reponse_www" =~ ^[oO] ]]; then
             local folder_destination_clean="www.${folder_destination#www.}"  # Ajoute www. si pas déjà présent
         else
