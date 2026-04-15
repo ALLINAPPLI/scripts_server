@@ -102,17 +102,6 @@ remplacementURL_BDD() {
     if [ -f "$mysql_source_database.sql" ]; then 
         echo -e "${BLUE}[ INFO ]${NC} Remplacement des URL de ${GREEN}$folder_source${NC} par ${GREEN}$folder_destination${NC} ..."
         sed -i "s/DEFINER=[^*]*\*/\*/g" "$mysql_source_database.sql"
-        
-        # ## Parcours et modification des URL
-        # local folder_source_escaped=${folder_source//./\\.}
-        # cat $mysql_source_database.sql \
-        # | sed "s|$folder_source_escaped|$folder_destination|g"\
-        # | sed "s|www.$folder_source|$folder_destination|g"\
-        # | sed "s|www.$folder_destination|$folder_destination|g"\
-		# | sed "s|$root_folder_src|$root_folder_dest|g"\
-        # > $mysql_source_database.sql.tmp
-        # mv $mysql_source_database.sql.tmp $mysql_source_database.sql
-
 
         # Échappement des points du domaine source pour utilisation dans sed (. devient \.)
         local folder_source_escaped=${folder_source//./\\.}
@@ -129,15 +118,15 @@ remplacementURL_BDD() {
 
         echo -e "${BLUE}[ INFO ]${NC} Domaine destination utilisé : $folder_destination_clean"
 
-        # Ce que fait le cat : 
         # www.domaine_source → destination (avec ou sans www. selon choix)
-        # domaine_source → destination
+        # Ce que fait le cat : 
+        # Le pattern (www\.)?$folder_source_escaped matche en une seule passe 
         # Remplace le chemin racine
         cat $mysql_source_database.sql \
-        | sed "s|www\.$folder_source_escaped|$folder_destination_clean|g" \
-        | sed "s|$folder_source_escaped|$folder_destination_clean|g" \
+        | sed -E "s|(www\.)?$folder_source_escaped|$folder_destination_clean|g" \
         | sed "s|$root_folder_src|$root_folder_dest|g" \
         > $mysql_source_database.sql.tmp
+
         # Remplace le fichier SQL original par le fichier temporaire modifié
         mv $mysql_source_database.sql.tmp $mysql_source_database.sql
 
