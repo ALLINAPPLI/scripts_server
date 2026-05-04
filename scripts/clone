@@ -125,63 +125,71 @@ fi
 ## Partie source
 clone_files()
 {
-	local tmp_file=$(mktemp)
-	cd $racine
-    echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
-    cd $root_folder_src
-    tar -cf $tmp_file .
-	cd $racine
+    (  # sous-shell : le cd ne pollue pas le parent
+        local tmp_file=$(mktemp)
+        cd $racine
+        echo -e "${BLUE}[ INFO ]${NC} Début de l'archivage"
+        cd $root_folder_src
+        tar -cf $tmp_file .
+        cd $racine
 
-    echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
-    rm -rf $root_folder_dest/*
-    tar -xf $tmp_file -C  $root_folder_dest
-    rm -f $tmp_file
-    echo -e "${GREEN}[ SUCCÈS ]${NC} Fichiers clonés !"
+        echo -e "${BLUE}[ INFO ]${NC} Début du désarchivage"
+        rm -rf $root_folder_dest/*
+        tar -xf $tmp_file -C  $root_folder_dest
+        rm -f $tmp_file
+        echo -e "${GREEN}[ SUCCÈS ]${NC} Fichiers clonés !"
+    )
 }
 
 modify_value_within_files()
 {
-    echo -e "${BLUE}[ INFO ]${NC} Modification des valeurs des fichiers de configuration ..."
-    cd $racine/$root_folder_dest
-    if [ "$cms_instance_source" == "wordpress" ]; then
-        majValeurs_Wordpress;
-        majValeurs_Wordfence;
-        majValeursCivicrm_Wordpress;
-    fi
+    (  # sous-shell : le cd ne pollue pas le parent
+        echo -e "${BLUE}[ INFO ]${NC} Modification des valeurs des fichiers de configuration ..."
+        cd $racine/$root_folder_dest
+        if [ "$cms_instance_source" == "wordpress" ]; then
+            majValeurs_Wordpress;
+            majValeurs_Wordfence;
+            majValeursCivicrm_Wordpress;
+        fi
 
-    if [ "$cms_instance_source" == "drupal" ]; then
-        majValeurs_Drupal 
-        majValeursCivicrm_Drupal
-    fi
+        if [ "$cms_instance_source" == "drupal" ]; then
+            majValeurs_Drupal 
+            majValeursCivicrm_Drupal
+        fi
 
-    if [ "$cms_instance_source" == "backdrop" ]; then
-    	majValeur_Backdrop
-    fi
-    	
+        if [ "$cms_instance_source" == "backdrop" ]; then
+            majValeur_Backdrop
+        fi
 
-    if [ "$cms_instance_source" == "standalone" ]; then
-        maj_valeur_civicrm_settings_php "$racine/$root_folder_dest/private/"
-    fi
-    echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers de config ont été remplacées"
-    echo -e "${BLUE}[ INFO ]${NC} Début de la modification dans les fichiers d'accès"
-    cd $racine/$root_folder_dest
-    local htaccess=$(find -name ".htaccess")
-    for ele in $htaccess; do
-    	replace $folder_source $folder_destination -- $ele
-    done
+        if [ "$cms_instance_source" == "standalone" ]; then
+            maj_valeur_civicrm_settings_php "$racine/$root_folder_dest/private/"
+        fi
+        echo -e "${GREEN}[ SUCCÈS ]${NC} Les valeurs dans les fichiers de config ont été remplacées"
+        echo -e "${BLUE}[ INFO ]${NC} Début de la modification dans les fichiers d'accès"
+        cd $racine/$root_folder_dest
+        local htaccess=$(find -name ".htaccess")
+        for ele in $htaccess; do
+            replace $folder_source $folder_destination -- $ele
+        done
+        echo -e "${BLUE}[ INFO ]${NC} Fin de modify_value_within_files"
+       
+    )
 }
 
 clone_bdd()
 {
+    local reponse_www=$1
+    # set -x
     echo -e "${BLUE}[ INFO ]${NC} Début du clonage de la base de donnée"
     tempfile="/tmp/temp_clonage-$cms_instance_destination-$folder_destination"
     if [ ! -d "$tempfile" ]; then mkdir "$tempfile"; fi
     cd "$tempfile"
     get_bdd_from_instance $mysql_source_database $mysql_source_user $mysql_source_mdp --skip-triggers # Création du fichier .sql source
-    remplacementURL_BDD
+    remplacementURL_BDD "$reponse_www"
     nettoyageAdressesElectroniques
     set_bdd_in_instance $mysql_destination_database $mysql_destination_user $mysql_destination_mdp "$mysql_source_database".sql
     echo -e "${BLUE}[ INFO ]${NC} Suppression du dossier temp_clonage destination..." && rm -rf "$tempfile" && cd $vhosts && echo " "
+    # set +x
 }
 
 maintenance_mod=""
@@ -196,14 +204,27 @@ formated_start=$(date +"%Y-%m-%d %H:%M:%S")
 echo -e "${YELLOW}================================================${NC}" ; echo " "
 echo -e "${BLUE}[ INFO ]${NC} \033[1;34m-🔄- Lancement du clonage de la base de données en arrière-plan...${NC} (-🕒- début : $formated_start)"
 
+echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : "
+read reponse_www < /dev/tty
 
-clone_bdd & pid_to_wait=$!
+# clone_bdd & pid_to_wait=$!
+# clone_bdd < /dev/null & pid_to_wait=$!
+clone_bdd "$reponse_www" & pid_to_wait=$!
+# echo "PID de clone_bdd : $pid_to_wait"
 clone_files
 modify_value_within_files
 if [ ! $pid_to_wait = "" ]; then
     echo -e "${BLUE}[ INFO ]${NC} -⏳- En attente de la fin du clonage de la BDD..."
     wait $pid_to_wait
 fi
+# if [ ! $pid_to_wait = "" ]; then
+#     echo -e "${BLUE}[ INFO ]${NC} -⏳- En attente de la fin du clonage de la BDD..."
+#     # Timeout de 60s pour le debug
+#     ( sleep 60; kill $pid_to_wait 2>/dev/null ) &
+#     timeout_pid=$!
+#     wait $pid_to_wait
+#     kill $timeout_pid 2>/dev/null
+# fi
 
 cd "$racine/$root_folder_src"
 

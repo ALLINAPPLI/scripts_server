@@ -99,6 +99,15 @@ instanceVide_Destination() {
 }
 
 remplacementURL_BDD() {
+    # Si la réponse est passée en paramètre on l'utilise,
+    # sinon on la demande interactivement
+    if [ -n "$1" ]; then
+        local reponse_www="$1"
+    else
+        echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : "
+        read reponse_www < /dev/tty
+    fi
+
     if [ -f "$mysql_source_database.sql" ]; then 
         echo -e "${BLUE}[ INFO ]${NC} Remplacement des URL de ${GREEN}$folder_source${NC} par ${GREEN}$folder_destination${NC} ..."
         sed -i "s/DEFINER=[^*]*\*/\*/g" "$mysql_source_database.sql"
@@ -106,10 +115,10 @@ remplacementURL_BDD() {
         # Échappement des points du domaine source pour utilisation dans sed (. devient \.)
         local folder_source_escaped=${folder_source//./\\.}
 
-        # Demande à l'utilisateur si le domaine destination doit avoir www.
-        reponse_www=""
-        echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : "
-        read reponse_www < /dev/tty
+        # # Demande à l'utilisateur si le domaine destination doit avoir www.
+        # reponse_www=""
+        # echo " >> Le domaine destination $folder_destination doit-il avoir www. ? (o/n) : "
+        # read reponse_www < /dev/tty
         if [[ "$reponse_www" =~ ^[oO] ]]; then
             local folder_destination_clean="www.${folder_destination#www.}"  # Ajoute www. si pas déjà présent
         else
@@ -149,6 +158,7 @@ remplacementURL_BDD() {
         echo -e ">> [${RED}ERREUR${NC}] "$mysql_source_database.sql" n'existe pas"
         exit 0
     fi
+    echo -e "${BLUE}[ INFO ]${NC} Fin de remplacementURL_BDD"
 }
 recalculer_serialisation_old() {
     local fichier="$1"
@@ -823,6 +833,8 @@ majValeur_Backdrop() {
 majValeurs_Wordpress() {
 	cd $racine
     cd $root_folder_dest
+    # echo " TTTT racine=$racine"
+    # echo " TTTT root_folder_dest=$root_folder_dest"
     [[ -f "wp-config.php" ]] && sed -i "s|/vhosts/$folder_source|/vhosts/$folder_destination|g" wp-config.php    
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_NAME', '$mysql_source_database'|'DB_NAME', '$mysql_destination_database'|g" wp-config.php
     [[ -f "wp-config.php" ]] && sed -i "s|'DB_USER', '$mysql_source_user'|'DB_USER', '$mysql_destination_user'|g" wp-config.php
@@ -940,6 +952,7 @@ vidageBDD_Destination(){
 nettoyageAdressesElectroniques() {
     echo -e "${BLUE}[ INFO ]${NC} Nettoyage des adresses électroniques dans ${GREEN}$mysql_destination_database${NC} ..."
     sed -i 's|@'"$folder_destination"'|@'"$folder_source"'|g' $mysql_source_database.sql
+    echo -e "${BLUE}[ INFO ]${NC} Fin de nettoyageAdressesElectroniques"
 }
 
 exportBDD_Source() {
