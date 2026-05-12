@@ -274,7 +274,7 @@ recalculer_serialisation() {
             verbose="1"
         fi
     done
-
+    echo -e " ================= DEBUT sérialisations ================= "
     echo -e "🧹 Recalcul des sérialisations... ${GREEN}[ EN COURS ]${NC}"
 
     python3 - "$fichier" "$verbose" <<'EOF'
@@ -454,6 +454,7 @@ EOF
         rm -f "${fichier}.reserial.tmp"
         exit 1
     fi
+    echo -e " ================= FIN sérialisations ================= "
 }
 
 ## CAs de test pour traite quand meme les tablea vec des champ blob mais en tratant les autre champ >> marcha pas 
@@ -950,9 +951,13 @@ vidageBDD_Destination(){
 }
 
 nettoyageAdressesElectroniques() {
+    echo -e " =======  Début de nettoyageAdressesElectroniques ======= "
     echo -e "${BLUE}[ INFO ]${NC} Nettoyage des adresses électroniques dans ${GREEN}$mysql_destination_database${NC} ..."
+    echo -e "${BLUE}[ INFO ]${NC} -- Remplacer : ${GREEN}@$folder_destination${NC} par ${GREEN}@$folder_source${NC}"
+    count=$(grep -o @"$folder_destination" "$mysql_source_database.sql" | wc -l)
+    echo -e "${BLUE}[ INFO ]${NC} $count occurence(s) de ${GREEN}@$folder_destination${NC} encore en base."
     sed -i 's|@'"$folder_destination"'|@'"$folder_source"'|g' $mysql_source_database.sql
-    echo -e "${BLUE}[ INFO ]${NC} Fin de nettoyageAdressesElectroniques"
+    echo -e " ======= Fin de nettoyageAdressesElectroniques ======= "
 }
 
 exportBDD_Source() {
