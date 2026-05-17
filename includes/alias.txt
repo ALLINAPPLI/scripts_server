@@ -3,9 +3,10 @@ www     : cd /var/www/vhosts
 cl      : clear
 
 === Plesk utils ===
-rep        : Lancement de la commande `plesk-repair` sur l’instance en cours
-repall     : Lancement de la commande `plesk-repair` sur l’ensemble des instances
-getplesksite : Récupération du nom de l’instance en cours
+getplesksite    : Récupération du nom de l’instance en cours
+rep             : Lancement de la commande `plesk-repair` sur l’instance en cours
+repall          : Lancement de la commande `plesk-repair` sur l’ensemble des instances
+user            : permettant de trouver les utilisateurs plask d'une intance
 
 === Accès aux fichiers ===
 bashrc  : Accéder au fichier `.bashrc` via `nano`
