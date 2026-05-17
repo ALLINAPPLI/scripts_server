@@ -1,0 +1,33 @@
+#!/bin/bash
+##
+## plesk-user.sh — Trouve l'utilisateur système associé au domaine courant (Plesk)
+##
+#############################################################
+##
+##  Clonage d'instances
+##
+#############################################################
+# plesk-user.sh — Trouve l'utilisateur système associé au domaine courant (Plesk)
+# Usage : sourcer ce fichier dans ~/.bashrc ou ~/.bash_aliases
+#   echo 'source /path/to/plesk-user.sh' >> ~/.bashrc && source ~/.bashrc
+
+# user() {
+    # domain
+    domain=$(pwd | grep -oP '(?<=/var/www/vhosts/)[^/]+' | head -1)
+    
+
+    if [[ -z "$domain" ]]; then
+        echo "Erreur : pas dans un répertoire vhost (/var/www/vhosts/...)" >&2
+        exit 1
+    fi
+
+    echo "domain : " $domain
+    echo "utilisateur plesk : "
+    plesk db -Ne "
+        SELECT su.login
+        FROM domains d
+        JOIN hosting h ON d.id = h.dom_id
+        JOIN sys_users su ON h.sys_user_id = su.id
+        WHERE d.name = '$domain'
+    "
+# }
