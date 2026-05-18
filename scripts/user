@@ -21,7 +21,7 @@
         exit 1
     fi
 
-    echo "domain : " $domain
+    echo "domaine : " $domain
     echo "utilisateur plesk : "
     plesk db -Ne "
         SELECT su.login
