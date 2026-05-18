@@ -1,38 +1,63 @@
 #!/bin/bash
 
+# 
+# cvdall                    : Désactive toutes les extensions (sauf celles exclues)
+# cvdall --cancel           : Réactive les extensions depuis le cache (cvall --list cvdall_cache)
+# cvdall --list <fichier>   : Désactive uniquement les extensions listées dans un fichier
+# cvdall -help              : Affiche l'aide
+# 
+
 if [ "$1" = "-help" ]; then
     echo "Disable all CiviCRM extensions"
-    exit 0
+    exit 0 # Quitte proprement avec un code de succès
 fi
 
+# --- Navigation vers le dossier httpdocs si présent ---
 if [ -d "httpdocs" ]; then
 	cd httpdocs
 fi
 
+# --- Gestion de l'option --cancel ---
 if [ "$1" = "--cancel" ]; then
-	cvall --list cvdall_cache
-	exit $?
+    # Si l'argument est "--cancel", on réactive les extensions sauvegardées dans le cache
+	cvall --list cvdall_cache # Réactive toutes les extensions listées dans le fichier cvdall_cache
+	exit $?  # Quitte avec le code de retour de la commande précédente (0=succès, autre=erreur)
 fi
 
-source "$CUSTOM_DIR/includes/functions.sh"
-source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
-cms_instance=""
-mysql_database=""
-mysql_user=""
-mysql_mdp=""
+# --- Chargement des fonctions utilitaires partagées ---
+source "$CUSTOM_DIR/includes/functions.sh"              # Fonctions génériques du projet
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh"  # Fonctions liées aux instances/clones
+# --- Initialisation des variables ---
+cms_instance=""     # Nom de l'instance CMS (ex: WordPress, Drupal...)
+mysql_database=""   # Nom de la base de données MySQL
+mysql_user=""       # Utilisateur MySQL
+mysql_mdp=""        # Mot de passe MySQL
 
+# --- Détection du site courant ---
 current_site=$(basename "$(dirname "$(pwd)")")
+# Remonte d'un niveau dans le chemin et prend le nom du dossier parent
+# Ex: /var/www/clients/monsite/httpdocs → current_site = "monsite"
+
 result="$(get_instance_cms $current_site)"
+# Appelle la fonction get_instance_cms avec le nom du site pour obtenir les infos de connexion
 if [ $? != 0 ]; then
+    # Si la fonction a échoué (code de retour != 0), on arrête le script
 	exit 1
 fi
 
+# --- Extraction des valeurs retournées par get_instance_cms ---
 read cms_instance mysql_database mysql_user mysql_mdp <<< $result
+# "<<<" (here-string) passe $result comme entrée à "read"
+# Remplit les 4 variables en découpant $result par les espaces
+
+# --- Liste des extensions à ne jamais désactiver ---
 to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
+# Variable non utilisée dans le code actif (présente pour les lignes commentées en SQL)
 
-
+# --- Gestion de l'option --list <fichier> ---
 if [ "$1" = "--list" ]; then
     if [ -e "$2" ]; then
+        # Si le fichier passé en 2ème argument existe sur le disque
         echo -e "${BLUE}[ INFO ]${NC} Récupération de toutes les extensions via le fichier donné..."
         # extension_to_disable=$(
         #   awk 'BEGIN{c=0}
@@ -43,40 +68,70 @@ if [ "$1" = "--list" ]; then
         #        }' "$2"
         # )
         extension_to_disable=$(cat $2)
+        # Lit le contenu brut du fichier (une extension par ligne)
+
+        # Supprime les sauts de ligne : transforme la liste en une seule ligne séparée par des espaces
         extension_to_disable=$(echo $extension_to_disable)
         if [ "$extension_to_disable" = "" ]; then
+            # Si après lecture le contenu est vide, on signale l'erreur
             echo -e "${RED}[ERREUR]${NC} Fichier vide ou aucune entrée valide"
-            echo $extension_to_disable
-            exit 1
+            echo $extension_to_disable # Affiche la variable (vide) pour debug
+            exit 1 # Quitte avec une erreur
         fi
         echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
         # sql="UPDATE civicrm_extension SET is_active = '0' WHERE full_name IN (${extension_to_disable});"
         # echo "$sql" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
         # cv updb
+
         cv ext:disable $extension_to_disable
-        echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"
-        exit 0
+        # Désactive les extensions listées via l'outil CLI "cv" de CiviCRM
+
+        echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM déactivées"
+        exit 0 # Quitte proprement
     else
+        # Le fichier passé en argument n'existe pas
         echo -e "${RED}[ERREUR]${NC} La liste n'a pas été trouvée : $2"
         
-        exit 1
+        exit 1  # Quitte avec une erreur
     fi
 fi
 
 
-
+# ============================================================
+# --- Mode principal : désactivation globale des extensions ---
+# ============================================================
 echo -e "${BLUE}[ INFO ]${NC} Récupération des extensions actives via MySQL..."
 # echo "SELECT full_name FROM civicrm_extension WHERE is_active = '0' AND full_name NOT IN (${to_exclude})"\
 # 	| mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database" > cvdall_cache
+
+# --- Définition des extensions à exclure de la désactivation ---
 exclude_list="authx|civiimport|org.civicrm.flexmailer|org.civicrm.afform|org.civicrm.search_kit|riverlea"
+# Format regex (séparateur "|") pour être utilisé avec grep -E
+
 current_extensions=$(cv ext:list -I --columns=key --statuses=installed 2> /dev/null)
+# Récupère la liste des extensions CiviCRM actuellement installées et actives
+# -I                    : affiche uniquement les clés (noms techniques)
+# --columns=key         : ne retourne que la colonne "key"
+# --statuses=installed  : filtre sur le statut "installé"
+# 2> /dev/null          : supprime les messages d'erreur éventuels
+
 filtered_extension=$(echo "$current_extensions" | grep -Ev "(${exclude_list})")
+# Filtre la liste pour exclure les extensions critiques
+# grep -E   : active les expressions régulières étendues
+# -v        : inverse le filtre (garde les lignes qui NE correspondent PAS au pattern)
+
 echo $filtered_extension > cvdall_cache
+# Sauvegarde la liste filtrée dans le fichier cvdall_cache
+# Ce fichier servira de "sauvegarde" pour réactiver les extensions avec --cancel
+
 
 echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
-# echo "UPDATE civicrm_extension SET is_active = '0' WHERE is_active LIKE '1' AND full_name NOT IN (${to_exclude})"\
-#       | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+# Bloc commenté : ancienne méthode via requête SQL directe
+# # echo "UPDATE civicrm_extension SET is_active = '0' WHERE is_active LIKE '1' AND full_name NOT IN (${to_exclude})"\
+# #       | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
+
 cv ext:disable $filtered_extension
+# Désactive toutes les extensions de la liste filtrée via le CLI cv de CiviCRM
 
 echo -e "${BLUE}[ INFO ] ${NC} Mise à jour de la base de données"
 # cv updb
