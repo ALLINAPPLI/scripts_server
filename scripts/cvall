@@ -29,10 +29,8 @@ fi
 
 read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 
-
-
 if [ "$1" = "--list" ]; then
-    if [ -e "$2" ]; then
+    if [ -e "$2" ]; then # cherche "cvdall_cache" dans le répertoire courant
         echo -e "${BLUE}[ INFO ]${NC} Récupération de toutes les extensions via le fichier donné..."
         # extension_to_disable=$(
         #   awk 'BEGIN{c=0}
@@ -42,18 +40,18 @@ if [ "$1" = "--list" ]; then
         #          printf "%s\047%s\047", (c++?",":""), $0
         #        }' "$2"
         # )
-        extension_to_enable=$(cat $2)
-        extension_to_enable=$(echo "$extension_to_enable")
+        extension_to_enable=$(cat $2) # lit cvdall_cache
+        extension_to_enable=$(echo "$extension_to_enable") # met tout sur une ligne
         if [ "$extension_to_enable" = "" ]; then
             echo -e "${RED}[ERREUR]${NC} Fichier vide ou aucune entrée valide"
             echo $extension_to_enable
             exit 1
         fi
-        echo -e "${BLUE}[ INFO ]${NC} Désactivation de toutes les extensions via MySQL..."
+        echo -e "${BLUE}[ INFO ]${NC} Activation de toutes les extensions via MySQL..."
         # sql="UPDATE civicrm_extension SET is_active = '1' WHERE full_name IN (${extension_to_disable});"
         # echo "$sql" | mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database"
 		# cv updb
-		cv ext:enable $extension_to_enable
+		cv ext:enable $extension_to_enable  # réactive les extensions
 		echo -e "${GREEN}[ SUCCÈS ]${NC} extensions CiviCRM activées"
         exit 0
     else
