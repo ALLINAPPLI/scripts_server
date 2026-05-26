@@ -51,7 +51,7 @@ read cms_instance mysql_database mysql_user mysql_mdp <<< $result
 # Remplit les 4 variables en découpant $result par les espaces
 
 # --- Liste des extensions à ne jamais désactiver ---
-to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit'"
+to_exclude="'org.civicrm.flexmailer','org.civicrm.afform','authx','civiimport','org.civicrm.search_kit','riverlea','standaloneusers'"
 # Variable non utilisée dans le code actif (présente pour les lignes commentées en SQL)
 
 # --- Gestion de l'option --list <fichier> ---
@@ -105,7 +105,7 @@ echo -e "${BLUE}[ INFO ]${NC} Récupération des extensions actives via MySQL...
 # 	| mysql -u "$mysql_user" -p"$mysql_mdp" "$mysql_database" > cvdall_cache
 
 # --- Définition des extensions à exclure de la désactivation ---
-exclude_list="authx|civiimport|org.civicrm.flexmailer|org.civicrm.afform|org.civicrm.search_kit|riverlea"
+exclude_list="authx|civiimport|org.civicrm.flexmailer|org.civicrm.afform|org.civicrm.search_kit|riverlea|standaloneusers"
 # Format regex (séparateur "|") pour être utilisé avec grep -E
 
 current_extensions=$(cv ext:list -I --columns=key --statuses=installed 2> /dev/null)
