@@ -1,0 +1,82 @@
+#!/bin/bash
+##
+## Développé par Antoine BREHERET
+##
+#############################################################
+##
+##  Récupérer les git des extension Civicrm D'un site 
+##  retourne : EXT | ORIGIN | BRANCH | HEAD | REMOTE 
+##
+#############################################################
+
+ORANGE='\033[0;33m'
+GREEN='\033[0;32m'
+RED='\033[0;31m'
+GRAY='\033[0;90m'
+NC='\033[0m'
+
+# Remonter jusqu'à trouver un dossier ext/ et vérifier qu'on est dans vhost
+CURRENT_PATH=$(pwd)
+while [[ "$CURRENT_PATH" != "/" ]]; do
+    if [ -d "$CURRENT_PATH/ext" ]; then
+        break
+    fi
+    CURRENT_PATH=$(dirname "$CURRENT_PATH")
+done
+
+if [ "$CURRENT_PATH" == "/" ]; then
+    echo "Erreur : aucun dossier ext/ trouve en remontant depuis $(pwd)"
+    exit 1
+fi
+
+if [[ "$CURRENT_PATH" != */vhost* ]]; then
+    echo "Erreur : le chemin trouve n'est pas dans un dossier vhost"
+    echo "Chemin trouve : $CURRENT_PATH"
+    exit 1
+fi
+
+EXT_DIR="$CURRENT_PATH/ext"
+
+echo "Site : $CURRENT_PATH"
+echo ""
+
+
+# En-tête du tableau
+printf "%-40s %-6s %-15s %-10s %-50s\n" "EXT" "ORIGIN" "BRANCH" "HEAD" "GIT"
+printf "%-40s %-6s %-15s %-10s %-50s\n" "$(printf '%0.s-' {1..40})" "$(printf '%0.s-' {1..6})" "$(printf '%0.s-' {1..15})" "$(printf '%0.s-' {1..10})" "$(printf '%0.s-' {1..50})"
+
+TOTAL=0
+WITH_GIT=0
+WITHOUT_GIT=0
+
+for dir in "$EXT_DIR"/*/; do
+    if [ -d "$dir" ]; then
+        TOTAL=$((TOTAL + 1))
+        ext_name=$(basename "$dir")
+
+        if [ -d "$dir/.git" ]; then
+            WITH_GIT=$((WITH_GIT + 1))
+
+            remote_url=$(git -C "$dir" remote -v 2>/dev/null | grep "(fetch)" | awk '{print $2}')
+            origin=$(git -C "$dir" remote -v 2>/dev/null | grep "(fetch)" | awk '{print $1}')
+            branch=$(git -C "$dir" branch --show-current 2>/dev/null)
+            head=$(git -C "$dir" rev-parse --short HEAD 2>/dev/null)
+
+            remote_url="${remote_url:--}"
+            origin="${origin:--}"
+            branch="${branch:--}"
+            head="${head:--}"
+
+            if [[ "$branch" != "master" && "$branch" != "-" ]]; then
+                printf "%-40s %-6s ${ORANGE}%-15s${NC} %-10s %-50s\n" "$ext_name" "$origin" "$branch" "$head" "$remote_url"
+            else
+                printf "%-40s %-6s %-15s %-10s %-50s\n" "$ext_name" "$origin" "$branch" "$head" "$remote_url"
+            fi
+        else
+            WITHOUT_GIT=$((WITHOUT_GIT + 1))
+            printf "%-40s %-6s %-15s %-10s %-50s\n" "$ext_name" "-" "-" "-" "(pas de .git)"
+        fi
+    fi
+done
+echo ""
+echo "Total: $TOTAL | Avec git: $WITH_GIT | Sans git: $WITHOUT_GIT"
