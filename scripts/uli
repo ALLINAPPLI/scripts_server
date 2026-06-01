@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/bin/bash
 # ============================================================
 # uli — User Login Instant
 # Génère un lien de connexion admin pour un site WP/Drupal/Standalone
@@ -288,88 +288,59 @@ drupal_autologin() {
 }
 
 # ============================================================
-#  STANDALONE
-#  Fichier one-shot → docroot/ (racine du site)
-#  Lien             → https://site.fr/uli_KEY.php?t=TOKEN
+#  STANDALONE — CiviCRM
+#  Utilise /etc/my_common/officialbin/cv url --login --user=
 # ============================================================
 standalone_autologin() {
-  warn "Site standalone détecté (pas de WP ni Drupal)"
+  info "Site standalone — connexion CiviCRM via cv"
 
-  # Tentative Plesk CLI
-  if command -v plesk &>/dev/null; then
-    info "Plesk CLI disponible — domaine : ${BOLD}${SITE_DOMAIN}${RESET}"
-    local SESSION_LINK
-    SESSION_LINK=$(plesk bin admin --get-login-link 2>/dev/null || true)
-    if [[ -n "$SESSION_LINK" ]]; then
-      ok "Lien de connexion Plesk :"
-      echo -e "\n  ${GREEN}${BOLD}${SESSION_LINK}${RESET}\n"
-      return
-    fi
+  local CV="/etc/my_common/officialbin/cv"
+  [[ -x "$CV" ]] || die "cv introuvable ou non exécutable : $CV"
+
+  local CV_USERNAME=""
+
+  if [[ -z "$USER_ARG" || "$USER_ARG" == "admin" ]]; then
+    # Sans argument ou -u admin → premier user avec le rôle admin
+    CV_USERNAME=$(echo "SELECT m.username FROM civicrm_uf_match m
+      INNER JOIN civicrm_user_role ur ON ur.user_id = m.uf_id
+      INNER JOIN civicrm_role r ON r.id = ur.role_id
+      WHERE r.name = 'admin'
+      ORDER BY m.uf_id ASC LIMIT 1;" \
+      | $CV --cwd="$DOCROOT" sql 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
+    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur avec le rôle admin trouvé"
+    info "Premier admin trouvé : ${BOLD}$CV_USERNAME${RESET}"
+
+  elif [[ "$USER_ARG" =~ ^[0-9]+$ ]]; then
+    # ID numérique → résout username via civicrm_uf_match
+    CV_USERNAME=$(echo "SELECT username FROM civicrm_uf_match WHERE uf_id = $USER_ARG LIMIT 1;" \
+      | $CV --cwd="$DOCROOT" sql 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
+    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour l'id : $USER_ARG"
+
+  elif [[ "$USER_ARG" == *@* ]]; then
+    # Email → cherche par uf_name (email de connexion dans civicrm_uf_match)
+    CV_USERNAME=$(echo "SELECT username FROM civicrm_uf_match WHERE uf_name = '$USER_ARG' LIMIT 1;" \
+      | $CV --cwd="$DOCROOT" sql 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
+    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour l'email : $USER_ARG"
+
+  else
+    # Username texte → cherche directement dans username
+    CV_USERNAME=$(echo "SELECT username FROM civicrm_uf_match WHERE username = '$USER_ARG' LIMIT 1;" \
+      | $CV --cwd="$DOCROOT" sql 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
+    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour le username : $USER_ARG"
   fi
 
-  warn "Plesk CLI non disponible — génération d'un token PHP générique"
+  info "Génération du lien pour : ${BOLD}${CV_USERNAME}${RESET}"
 
-  [[ -f "$DOCROOT/index.php" ]] || die "Aucun index.php trouvé dans $DOCROOT"
+  local URL
+  URL=$($CV --cwd="$DOCROOT" url --login --user="$CV_USERNAME" "civicrm/home" 2>/dev/null) || \
+    die "cv url --login a échoué pour --user=$CV_USERNAME"
 
-  # Cherche l'URL dans les fichiers de config courants
-  local SITE_URL=""
-  for cfg in "$DOCROOT/.env" "$DOCROOT/config.php" "$DOCROOT/config/config.php" \
-             "$DOCROOT/application/config/config.php"; do
-    if [[ -f "$cfg" ]]; then
-      SITE_URL=$(grep -iE "base_url|app_url|site_url" "$cfg" 2>/dev/null \
-        | grep -oP "https?://[^'\"']+" | head -1 || true)
-      [[ -n "$SITE_URL" ]] && break
-    fi
-  done
-
-  # Sinon depuis la config vhost Plesk/Apache
-  if [[ -z "$SITE_URL" ]]; then
-    local VHOST_CONF
-    VHOST_CONF=$(find /etc/apache2/conf.d /etc/nginx/conf.d /etc/apache2/vhosts.d \
-                      /var/www/vhosts/system 2>/dev/null -name "*.conf" \
-                | xargs grep -l "DocumentRoot.*$DOCROOT" 2>/dev/null | head -1 || true)
-    if [[ -n "$VHOST_CONF" ]]; then
-      SITE_URL=$(grep -oP "ServerName \K\S+" "$VHOST_CONF" 2>/dev/null | head -1 || true)
-      [[ -n "$SITE_URL" ]] && SITE_URL="https://$SITE_URL"
-    fi
-  fi
-
-  # Fallback : on utilise le nom de domaine détecté
-  [[ -z "$SITE_URL" ]] && SITE_URL="https://${SITE_DOMAIN}"
-  SITE_URL="${SITE_URL%/}"
-  info "URL : ${BOLD}${SITE_URL}${RESET}"
-
-  local KEY TOKEN
-  KEY=$(openssl rand -hex 16)
-  TOKEN=$(openssl rand -hex 16)
-  local EXPIRE=$(( $(date +%s) + 300 ))
-  local HOOK="$DOCROOT/uli_${KEY}.php"
-
-cat > "$HOOK" <<PHPEOF
-<?php
-// Fichier auto-généré par uli — s'auto-détruit après usage
-\$token  = '${TOKEN}';
-\$expire = ${EXPIRE};
-\$user   = '${USER_ARG:-admin}';
-
-if ((\$_GET['t'] ?? '') !== \$token) { http_response_code(403); @unlink(__FILE__); die('Token invalide'); }
-if (time() > \$expire)               { http_response_code(403); @unlink(__FILE__); die('Token expiré');   }
-
-@unlink(__FILE__);
-session_start();
-\$_SESSION['autologin_user'] = \$user;
-\$_SESSION['autologin_time'] = time();
-// Adaptez la redirection à votre application :
-header('Location: ' . '${SITE_URL}/admin');
-exit;
-PHPEOF
-
-  chmod 644 "$HOOK"
   echo ""
-  ok "Lien de connexion standalone (valide ${BOLD}5 min${RESET}, usage unique) :"
-  echo -e "\n  ${GREEN}${BOLD}${SITE_URL}/uli_${KEY}.php?t=${TOKEN}${RESET}\n"
-  warn "Adaptez la redirection dans le PHP si votre admin n'est pas sur /admin"
+  ok "Lien de connexion CiviCRM standalone (usage unique) :"
+  echo -e "\n  ${GREEN}${BOLD}${URL}${RESET}\n"
+  warn "Connecte directement sur civicrm/home — ne pas partager"
 }
+
 
 # ============================================================
 #  DISPATCH
