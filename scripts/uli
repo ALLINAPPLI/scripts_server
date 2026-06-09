@@ -281,98 +281,6 @@ drupal_autologin() {
 #  Utilise /etc/my_common/officialbin/cv url --login --user=
 #  Requêtes SQL via mysql direct (credentials extraits du DSN)
 # ============================================================
-# standalone_autologin() {
-#   info "Site standalone — connexion CiviCRM via cv"
-
-#   local CV="/etc/my_common/officialbin/cv"
-#   [[ -x "$CV" ]] || die "cv introuvable ou non exécutable : $CV"
-
-#   # Cherche civicrm.settings.php pour le fallback mysql
-#   local CIVICRM_SETTINGS_FILE
-#   CIVICRM_SETTINGS_FILE=$(find "$DOCROOT" -name "civicrm.settings.php" 2>/dev/null | head -1 || true)
-
-#   # Fonction SQL : essaie cv sql, fallback sur mysql direct si ça échoue
-#   # civicrm_sql() {
-#   #   local RESULT
-#   #   RESULT=$(echo "$1" | $CV --cwd="$DOCROOT" sql 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
-
-#   #   # Si cv sql échoue et qu'on a un civicrm.settings.php → fallback mysql
-#   #   if [[ -z "$RESULT" && -n "$CIVICRM_SETTINGS_FILE" ]]; then
-#   #     local DSN DSN_NOSCHEME DB_USER DB_PASS DB_HOST DB_PORT DB_NAME
-#   #     DSN=$(grep "CIVICRM_DSN" "$CIVICRM_SETTINGS_FILE" | grep -v "^\s*\*" | grep -oP "mysql://[^'\"]+" || true)
-#   #     if [[ -n "$DSN" ]]; then
-#   #       DSN_NOSCHEME="${DSN#mysql://}"
-#   #       DB_USER=$(echo "$DSN_NOSCHEME" | cut -d: -f1)
-#   #       DB_PASS=$(echo "$DSN_NOSCHEME" | cut -d: -f2 | cut -d@ -f1)
-#   #       DB_HOST=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f1 | cut -d/ -f1)
-#   #       DB_PORT=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f2 | cut -d/ -f1)
-#   #       DB_NAME=$(echo "$DSN_NOSCHEME" | cut -d/ -f2 | cut -d? -f1)
-#   #       [[ -z "$DB_PORT" || ! "$DB_PORT" =~ ^[0-9]+$ ]] && DB_PORT="3306"
-#   #       RESULT=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" "$DB_NAME" \
-#   #         --skip-column-names -s -e "$1" 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
-#   #     fi
-#   #   fi
-#   #   echo "$RESULT"
-#   # }
-#   civicrm_sql() {
-#     local RESULT
-#     RESULT=$(echo "$1" | $CV --cwd="$DOCROOT" sql 2>&1 | tail -1 | tr -d '[:space:]' || true)
-
-#     # Si le résultat contient ERROR, Access, denied ou est vide → fallback mysql direct
-#     if [[ -z "$RESULT" || "$RESULT" == *"ERROR"* || "$RESULT" == *"Access"* || "$RESULT" == *"denied"* || "$RESULT" == *"1045"* ]]; then
-#       if [[ -n "$CIVICRM_SETTINGS_FILE" ]]; then
-#         local DSN DSN_NOSCHEME DB_USER DB_PASS DB_HOST DB_PORT DB_NAME
-#         DSN=$(grep "CIVICRM_DSN" "$CIVICRM_SETTINGS_FILE" | grep -v "^\s*\*" | grep -oP "mysql://[^'\"]+" || true)
-#         if [[ -n "$DSN" ]]; then
-#           DSN_NOSCHEME="${DSN#mysql://}"
-#           DB_USER=$(echo "$DSN_NOSCHEME" | cut -d: -f1)
-#           DB_PASS=$(echo "$DSN_NOSCHEME" | cut -d: -f2 | cut -d@ -f1)
-#           DB_HOST=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f1 | cut -d/ -f1)
-#           DB_PORT=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f2 | cut -d/ -f1)
-#           DB_NAME=$(echo "$DSN_NOSCHEME" | cut -d/ -f2 | cut -d? -f1)
-#           [[ -z "$DB_PORT" || ! "$DB_PORT" =~ ^[0-9]+$ ]] && DB_PORT="3306"
-#           RESULT=$(mysql -u "$DB_USER" -p"$DB_PASS" -h "$DB_HOST" -P "$DB_PORT" "$DB_NAME" \
-#             --skip-column-names -s -e "$1" 2>/dev/null | tail -1 | tr -d '[:space:]' || true)
-#         fi
-#       fi
-#     fi
-#     echo "$RESULT"
-#   }
-#   local CV_USERNAME=""
-
-#   if [[ "$USER_ARG" == "admin" ]]; then
-#     CV_USERNAME=$(civicrm_sql "SELECT m.username FROM civicrm_uf_match m
-#       INNER JOIN civicrm_user_role ur ON ur.user_id = m.uf_id
-#       INNER JOIN civicrm_role r ON r.id = ur.role_id
-#       WHERE r.name = 'admin'
-#       ORDER BY m.uf_id ASC LIMIT 1;")
-#     [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur avec le rôle admin trouvé"
-#     info "Premier admin trouvé : ${BOLD}$CV_USERNAME${RESET}"
-
-#   elif [[ "$USER_ARG" =~ ^[0-9]+$ ]]; then
-#     CV_USERNAME=$(civicrm_sql "SELECT username FROM civicrm_uf_match WHERE uf_id = $USER_ARG LIMIT 1;")
-#     [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour l'id : $USER_ARG"
-
-#   elif [[ "$USER_ARG" == *@* ]]; then
-#     CV_USERNAME=$(civicrm_sql "SELECT username FROM civicrm_uf_match WHERE uf_name = '$USER_ARG' LIMIT 1;")
-#     [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour l'email : $USER_ARG"
-
-#   else
-#     CV_USERNAME=$(civicrm_sql "SELECT username FROM civicrm_uf_match WHERE username = '$USER_ARG' LIMIT 1;")
-#     [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur CiviCRM trouvé pour le username : $USER_ARG"
-#   fi
-
-#   info "Génération du lien pour : ${BOLD}${CV_USERNAME}${RESET}"
-
-#   local URL
-#   URL=$($CV --cwd="$DOCROOT" url --login --user="$CV_USERNAME" "civicrm/home" 2>/dev/null) || \
-#     die "cv url --login a échoué pour --user=$CV_USERNAME"
-
-#   echo ""
-#   ok "Lien de connexion CiviCRM standalone (usage unique) :"
-#   echo -e "\n  ${GREEN}${BOLD}${URL}${RESET}\n"
-#   warn "Connecte directement sur civicrm/home — ne pas partager"
-# }
 standalone_autologin() {
   info "Site standalone — connexion CiviCRM via cv"
 
@@ -451,7 +359,7 @@ standalone_autologin() {
   info "Génération du lien pour : ${BOLD}${CV_USERNAME}${RESET}"
 
   local URL
-  URL=$($CV --cwd="$DOCROOT" url --login --user="$CV_USERNAME" "civicrm/home" 2>/dev/null) || \
+  URL=$($CV --cwd="$DOCROOT" url --login --user="$CV_USERNAME" "civicrm/home" 2>/dev/null | tr -d '"') || \
     die "cv url --login a échoué pour --user=$CV_USERNAME"
 
   echo ""
