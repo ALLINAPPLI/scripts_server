@@ -93,4 +93,4 @@ dum    : retirer la maintenance
 === Gérer une instance Mattermost
 mm     : pour chat.reseau-oudinot.com
 
-uli    : Connection à un site
+uli    : Connexion à un site
