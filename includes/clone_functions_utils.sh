@@ -75,7 +75,7 @@ get_instance_cms ()
 	cd "$root_domain"
 
     test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2;
-    test -e sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
+    test -e web/sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
     test -e private/civicrm.settings.php && cms_instance="standalone" && echo "Standalone installation" >&2;
     test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
 
@@ -87,11 +87,11 @@ get_instance_cms ()
             mysql_mdp=`grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php`;
         };;
         drupal) {
-            cd sites/default/;
+            cd web/sites/default/;
             mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
             mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
             mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-        };;
+       };;
         standalone){
             cd private/
             line=$(cat civicrm.settings.php | grep "define('CIVICRM_DSN', 'mysql" | tail -n 1)

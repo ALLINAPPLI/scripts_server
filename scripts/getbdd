@@ -26,7 +26,6 @@ else
 fi
 
 echo $folder_source
-
 result="$(get_instance_cms $folder_source)" || exit 1
 read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
 print_clone_bdd_resume "BDD du site sélectionné" "$mysql_source_database" "$mysql_source_user" "$mysql_source_mdp"
