@@ -1,0 +1,40 @@
+#!/bin/bash
+# Usage: cvdeb [/chemin/vers/le/site]
+set -e
+
+if ! command -v cv >/dev/null 2>&1; then
+    echo -e "${RED}Erreur : l'outil 'cv' n'est pas installé.${NC}"
+    exit 1
+fi
+
+TARGET="${1:-$PWD}"
+
+if [ -z "$TARGET" ]; then
+    if [[ "$PWD" == *"/httpdocs"* ]]; then
+        TARGET="$PWD"
+    else
+        echo -e "${YELLOW}Vous n'êtes pas dans le dossier httpdocs d'un domaine.${NC}"
+        read -e -p "Indiquez le chemin du dossier httpdocs (ex: /var/www/vhosts/mondomaine.fr/httpdocs) : " TARGET
+        if [ -z "$TARGET" ]; then
+            echo -e "${RED}Aucun chemin fourni, annulation."
+            exit 1
+        fi
+    fi
+fi
+
+cd "$TARGET" || { echo -e "${RED}Chemin introuvable : $TARGET ${NC}"; exit 1; } 
+
+if [[ "$PWD" != *"/httpdocs"* ]]; then
+    echo -e "${YELLOW}Attention : $PWD ne semble pas être dans un dossier httpdocs.${NC}"
+    read -p "Continuer quand même ? (o/N) : " CONFIRM
+    [[ "$CONFIRM" =~ ^[oOyY]$ ]] || exit 1
+fi
+
+echo "Désactivation du mode debug CiviCRM dans : $TARGET"
+cv api Setting.create debug_enabled=0 backtrace=0 >/dev/null
+
+DEBUG_VAL=$(cv api Setting.getvalue name=debug_enabled)
+BACKTRACE_VAL=$(cv api Setting.getvalue name=backtrace)
+
+echo -e "${BLUE}[ INFO ]${NC} État actuel : debug=$DEBUG_VAL et backtrace=$BACKTRACE_VAL"
+echo -e "${GREEN}Mode debug DÉSACTIVÉ.${NC}"
