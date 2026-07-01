@@ -26,6 +26,7 @@ testCMS() {
 	test -d httpdocs && cd httpdocs && instance="$instance/httpdocs"
     test -e wp-config.php && cms_instance="wordpress"
     test -e sites/default/settings.php && cms_instance="drupal"
+    test -e web/sites/default/settings.php && cms_instance="drupal10+"
     test -e private/civicrm.settings.php && cms_instance="standalone"
     test -e settings.php && cms_instance="backdrop"
     cd $prev_pwd
@@ -44,11 +45,10 @@ ext(){
         path_ext=$racine/$instance/wp-content/uploads/civicrm/ext
     fi
     if [ "$cms_instance" == "drupal" ]; then
-        if [ -d "$racine/$instance/web/sites/default/files/civicrm/ext" ]; then
-            path_ext=$racine/$instance/web/sites/default/files/civicrm/ext
-        else
-            path_ext=$racine/$instance/sites/default/files/civicrm/ext
-        fi
+         path_ext=$racine/$instance/sites/default/files/civicrm/ext
+    fi
+    if [ "$cms_instance" == "drupal10+" ]; then
+        path_ext=$racine/$instance/web/sites/default/files/civicrm/ext
     fi
     if [ "$cms_instance" == "standalone" ]; then
         path_ext=$racine/$instance/ext
