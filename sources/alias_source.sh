@@ -1,4 +1,7 @@
 ###*** Liste des Aliases ***###
+## Si on modifie ce fichier il faut qu'il soit sourcé automatiquement à chaque session :
+# il faut dont faire :
+# source /etc/my_common/scripts_server/sources/alias_source.sh
 
 # Accéder au dossier 
 alias sscr="cd /etc/my_common/scripts_server"
