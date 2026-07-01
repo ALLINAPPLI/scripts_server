@@ -1,6 +1,7 @@
 ###*** Liste des Aliases ***###
 
 # Accéder au dossier scripts/
+alias sscr="cd /etc/my_common/scripts_server/scripts"
 alias scripts="cd /etc/my_common/scripts_server/scripts"
 alias cmd="/etc/my_common/scripts_server/includes"
 
