@@ -1,5 +1,12 @@
 #!/bin/bash
-# Usage: cvudeb [/chemin/vers/le/site]
+##
+## Développé par Antoine Breheret
+##
+#############################################################
+##
+##  Désactivé le mode debug et backtrace
+##
+#############################################################
 set -e
 
 if ! command -v cv >/dev/null 2>&1; then
