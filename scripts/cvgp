@@ -1,5 +1,8 @@
 #!/bin/bash
 
+#
+# cvgp     : `git pull` d’une extension CiviCRM déjà clonée
+#
 source "/$CUSTOM_DIR/sources/utils.sh"
 source "/$CUSTOM_DIR/sources/cv_source.sh"
 

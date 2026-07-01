@@ -1,5 +1,8 @@
 #!/bin/bash
-
+#
+# dump   : Récupère l’intégralité de la base de données ; 
+#   si aucune instruction complémentaire n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal
+#
 if [ -d httpdocs ]; then
 	cd httpdocs
 fi

@@ -1,5 +1,41 @@
 #!/bin/bash
+#
+# wpall    : Activer toutes les extensions WordPress
+# wpall --cancel : Annuler l’activation de toutes les extensions WordPress
+# wpall --list <fichier> : Active uniquement les plugins listés dans <fichier>"
+#
 
+show_help()
+{
+    echo -e "${PURPLE}Utilisation :${NC} $(basename "$0") [OPTION]"
+    echo ""
+    echo -e "${BLUE}Description :${NC}"
+    echo "  Active en masse les extensions (plugins) WordPress inactives via WP-CLI."
+    echo "  Conserve une trace des plugins activés pour permettre une annulation."
+    echo ""
+    echo -e "${BLUE}Options :${NC}"
+    echo -e "  ${GREEN}-h, --help${NC}          Affiche cette aide et quitte"
+    echo -e "  ${GREEN}--list <fichier>${NC}    Active uniquement les plugins listés dans <fichier>"
+    echo -e "                       (un nom de plugin par ligne)"
+    echo -e "  ${GREEN}--cancel${NC}            Annule la dernière activation en masse"
+    echo -e "                       (désactive les plugins listés dans previous_wpall)"
+    echo ""
+    echo -e "${BLUE}Sans option :${NC}"
+    echo "  Active automatiquement tous les plugins actuellement inactifs."
+    echo ""
+    echo -e "${BLUE}Exemples :${NC}"
+    echo "  $(basename "$0")"
+    echo "  $(basename "$0") --list mes_plugins.txt"
+    echo "  $(basename "$0") --cancel"
+    echo ""
+    echo -e "${BLUE}Fichiers :${NC}"
+    echo "  previous_wpall   Trace des derniers plugins activés (créé/écrasé à chaque run)"
+}
+
+if [ "$1" = "-h" ] || [ "$1" = "--help" ]; then
+	show_help
+	exit 0
+fi
 
 if [ "$1" = "--cancel" ]; then
 	exec wpdall --list "previous_wpall"

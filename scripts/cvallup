@@ -1,4 +1,13 @@
 #!/bin/bash
+##
+## Développé par Antoine Breheret
+##
+#############################################################
+##
+##  Met à jour toutes les extensions de CiviCRM
+##
+#############################################################
+
 shopt -s expand_aliases 						# "bash, active les alias s'il te plaît"
 source "$CUSTOM_DIR/sources/alias_source.sh"	# charge les alias
 source "$CUSTOM_DIR/sources/utils.sh"
@@ -29,4 +38,4 @@ function cvallup() {
 
 cvallup $@ 
 # $@ représente tous les arguments passés au script lors de son appel.
-# Ce qui permete de mettre tous les extension qu'on veut (exemple : $@ contiendar arg1 arg2 arg3)
+# Ce qui permete de mettre tous les extensions qu'on veut (exemple : $@ contiendra arg1 arg2 arg3)

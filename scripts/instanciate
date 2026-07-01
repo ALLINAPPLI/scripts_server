@@ -1,9 +1,55 @@
 #!/bin/bash
+#
+# instanciate :  automatise la création complète d'un site web WP sous Plesk
+# - Saisie le domaine
+# - Création de l'abonnement Plesk
+# - Activation du site
+# - Configuration du handler PHP-FPM
+# - Récupération de l'ID du domaine
+# - Installation de WordPress via WP-Toolkit
+# - Choix du type de site à installer
+# - Mise à jour des identifiants de base de données
+# - Clonage final
+#
+
+
+show_help() {
+    cat << EOF
+Usage: $(basename "$0") [-h|--help]
+
+Description:
+  Ce script automatise la création d'un nouveau site sur le serveur Plesk :
+    1. Création de l'abonnement Plesk (domaine, IP, login, owner)
+    2. Activation du site et configuration du handler PHP-FPM
+    3. Récupération de l'ID du domaine en base Plesk
+    4. Installation WP-Toolkit
+    5. Clonage d'un site modèle (WordPress ou CiviCRM standalone)
+
+Options:
+  -h, --help    Affiche cette aide et quitte
+
+Utilisation interactive :
+  Le script vous demandera :
+    - le nom de domaine à créer
+    - le type de site à cloner :
+        w  = clone depuis un modèle WordPress
+        s  = clone depuis un modèle CiviCRM standalone
+        (autre) = clone libre depuis une autre instance du serveur
+
+EOF
+}
+
+case "$1" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+esac
 
 echo "> quel nom de domaine pour le site que vous voulez créer "
 read  site_to_create
 
-password='Am@z1ng_P@ssw0rd'
+password='Am@z1ng_P@ssw0rd' # Mot d epasse en dure pas secure du tout
 
 # adduser appli.in_user --password "Am@z1ng_P@ssw0rd"
 plesk bin subscription --create "$site_to_create" -service-plan 'Default Domain' -ip "2001:8d8:1800:e::1","82.165.162.162" -login "${site_to_create}_user" -passwd "$password" -owner "contact@all-in-appli.com"
@@ -14,7 +60,7 @@ php_handler=$(plesk bin php_handler --list | grep fpm | grep enabled | grep -v d
 plesk bin domain -u $site_to_create -php_handler_id $php_handler
 
 domain_id=$(mysql -uadmin -p`cat /etc/psa/.psa.shadow` psa -e "select id from domains where name='$site_to_create';" | tail -n 1)
-exit 1
+exit 1 ##POSE PROBLEME CAR SORT DU SCRIPT
 plesk ext wp-toolkit --install -domain-id "$domain_id" -path / -title "$site_to_create" -admin-user "admin"  -admin-password "$password" -admin-email "dev@all-in-appli.com"
 
 

@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+# cvextup  : Met à jour le code de toutes les extensions CiviCRM pour une nouvelle version de civix
+#
 upgrade_extension_of_site()
 {
     local site=$1

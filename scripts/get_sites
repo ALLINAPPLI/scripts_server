@@ -1,5 +1,7 @@
 #!/bin/bash
-
+#
+#  get_sites 	: lister les domaines/sites disponibles (server plesk)
+#
 user_id=$(id -u)
 if [ $user_id = "0" ]; then
 	plesk bin site --list

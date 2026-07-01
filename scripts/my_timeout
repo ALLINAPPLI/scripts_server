@@ -52,6 +52,20 @@ As of today, Bash does not support floating point arithmetic (sleep does),
 therefore all delay/time values must be integers.
 EOF
 }
+# --- Pré-traitement pour gérer --help ---
+# getopts ne comprend pas nativement les options longues (--help),
+# donc on l'intercepte manuellement avant la boucle getopts.
+for arg in "$@"; do
+    case "$arg" in
+        --help)
+            printUsage
+            exit 0
+            ;;
+        --)
+            break
+            ;;
+    esac
+done
 
 # Options.
 while getopts ":t:i:d:" option; do

@@ -9,8 +9,8 @@ source "$CUSTOM_DIR/sources/cv_source.sh"
 ##
 ######################################################################
 ##
-##  Permet d'installer une extension qui se télécharge en zip.
-##  On peut mettre plusieur argument pour plusieurs extension zipper.
+##  Permet d'installer une(des) extension(s) qui se télécharge en zip.
+##  On peut mettre plusieurs arguments pour plusieurs extensions zipper.
 ##
 ######################################################################
 

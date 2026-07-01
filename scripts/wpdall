@@ -1,5 +1,36 @@
 #!/bin/bash
 
+show_help()
+{
+    cat <<EOF
+Usage: $(basename "$0") [OPTION]
+
+Désactive en masse les plugins WordPress actifs via WP-CLI.
+
+Options :
+  (aucune)              Désactive tous les plugins actuellement actifs
+  --list <fichier>      Désactive uniquement les plugins listés dans <fichier>
+                         (un nom de plugin par ligne)
+  --cancel               Réactive les plugins désactivés lors du dernier passage
+                         (utilise le fichier "previous_wpdall")
+  -h, --helper          Affiche cette aide et quitte
+
+Fichiers :
+  previous_wpdall        Contient la liste des plugins désactivés avec succès
+                         lors de la dernière exécution. Recréé à chaque run.
+
+Exemples :
+  $(basename "$0")
+  $(basename "$0") --list mes_plugins.txt
+  $(basename "$0") --cancel
+EOF
+}
+
+if [ "$1" = "-h" ] || [ "$1" = "--helper" ]; then
+    show_help
+    exit 0
+fi
+
 if [ "$1" = "--cancel" ]; then
 	exec wpall --list "previous_wpdall"
 	exit $?

@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# Affichage de toutes les instances avec leur version de CMS et PHP
+#
 source "$CUSTOM_DIR/includes/functions.sh";
 
 version_compare()

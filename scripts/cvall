@@ -1,4 +1,13 @@
 #!/bin/bash
+##
+## AMélioré par Antoine Breheret
+##
+#############################################################
+##
+##  Active toutes les extensions CiviCRM
+##  cvall --cancel : annule la dernière opération de cvall dans l'instance
+##
+#############################################################
 
 if [ "$2" = "-help" ]; then
     echo "Disable all CiviCRM extensions"

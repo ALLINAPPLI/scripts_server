@@ -1,5 +1,9 @@
 #!/bin/bash
-
+#
+# Ce script sert à colorer certaines lignes de texte en fonction de leur format, 
+# pour rendre un fichier plus lisible dans un terminal. 
+# Il lit le fichier passé en argument ($1) ligne par ligne et applique une mise en formee
+#
 while IFS= read -r line; do
     if [[ "$line" =~ ^===.*=== ]]; then
         # Titre encadré par === → violet

@@ -3,8 +3,9 @@
 ## Développé par Antoine BREHERET
 ##
 #############################################################
-##
-##  Récupérer les git des extension Civicrm D'un site 
+##  
+##  getgits
+##  Récupérer les git des extensions Civicrm d'un site 
 ##  retourne : EXT | ORIGIN | BRANCH | HEAD | REMOTE 
 ##
 #############################################################

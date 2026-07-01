@@ -1,4 +1,7 @@
 #!/bin/bash
+#
+# cvgc     : `git clone` + activation de l’extension CiviCRM
+#
 source "/$CUSTOM_DIR/sources/utils.sh"
 source "/$CUSTOM_DIR/sources/cv_source.sh"
 

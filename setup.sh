@@ -1,5 +1,33 @@
 #!/bin/bash
+show_help() {
+    cat << EOF
+Usage: $(basename "$0") [OPTION]
 
+Déploie les scripts, sources, includes et fichiers de profil vers
+l'arborescence système partagée (/etc/my_common et /etc/profile.d).
+
+Ce script doit être lancé depuis un dossier contenant un ou plusieurs
+des sous-dossiers suivants :
+  ./scripts/    -> copié vers /etc/my_common/scripts_server/scripts/  (755)
+  ./sources/    -> copié vers /etc/my_common/scripts_server/sources/  (755)
+  ./includes/   -> copié vers /etc/my_common/scripts_server/includes/ (755)
+  ./links/      -> copié vers /etc/profile.d/                         (644)
+
+Options:
+  -h, --help    Affiche cette aide et quitte
+
+Exemple:
+  ./deploy.sh
+  ./deploy.sh --help
+EOF
+}
+
+case "$1" in
+    -h|--help)
+        show_help
+        exit 0
+        ;;
+esac
 test -e "/etc/my_common" || {
     mkdir /etc/my_common && chmod 755 /etc/my_common
 }
