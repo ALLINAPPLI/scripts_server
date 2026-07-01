@@ -2,6 +2,7 @@
 www     : cd /var/www/vhosts
 cl      : clear
 sscr    : Accéder au dossier /etc/my_common/scripts_server
+scripts  : pour se placer à la racine de /etc/my_common/scripts_server/scripts
 
 === Plesk utils ===
 getplesksite    : Récupération du nom de l’instance en cours
@@ -17,7 +18,6 @@ saverc   : Sauvegarder les modifications faites au fichier `.bashrc`
 maliass  : Éditer ce fichier de liste des alias
 aliass   : Alias qui affiche uniquement les alias que l’on a créés
 alias    : Commande qui affiche nos alias (sans les fonctions) ainsi que les alias UNIX déjà existants
-scripts  : pour se placer à la racine de /etc/my_common/scripts_server/scripts
 
 === Commandes spécifiques client ===
 impots   : cd /var/www/vhost/sandbox.snpnc.org/httpdocs/snpnc-impots
@@ -111,8 +111,8 @@ uli      : Connexion à un site
 getgits  : Récupérer les git des extensions Civicrm d'un site 
 
 === Fonctions utiles (peut être appelées independament mais aussi utilisé dans bcp de scripts)===
-cd_dir_cvextension  : Se positionner sur le dossier ext d'un domaine
-get_sites           : lister les domaines/sites disponibles 
-getcvsites          : Récupérer tous les sites civicrm du serveur 
+ext         : Se positionner sur le dossier ext d'un domaine
+get_sites   : lister les domaines/sites disponibles 
+getcvsites  : Récupérer tous les sites civicrm du serveur 
 
 

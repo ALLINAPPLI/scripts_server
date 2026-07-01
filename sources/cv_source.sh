@@ -32,7 +32,7 @@ testCMS() {
 }
 
 # Se posiotnner su rle repertoire ext du civicrm en fonciton du cms
-cd_dir_cvextension(){
+ext(){
     test -d httpdocs && cd httpdocs
     instance=$(getplesksite)
     testCMS
@@ -44,7 +44,11 @@ cd_dir_cvextension(){
         path_ext=$racine/$instance/wp-content/uploads/civicrm/ext
     fi
     if [ "$cms_instance" == "drupal" ]; then
-        path_ext=$racine/$instance/sites/default/files/civicrm/ext
+        if [ -d "$racine/$instance/web/sites/default/files/civicrm/ext" ]; then
+            path_ext=$racine/$instance/web/sites/default/files/civicrm/ext
+        else
+            path_ext=$racine/$instance/sites/default/files/civicrm/ext
+        fi
     fi
     if [ "$cms_instance" == "standalone" ]; then
         path_ext=$racine/$instance/ext
