@@ -30,11 +30,11 @@ if [[ "$PWD" != *"/httpdocs"* ]]; then
     [[ "$CONFIRM" =~ ^[oOyY]$ ]] || exit 1
 fi
 
-echo "Activation du mode debug CiviCRM dans : $TARGET"
-cv api Setting.create debug_enabled=1 backtrace=1 >/dev/null
+echo "Désactivation du mode debug CiviCRM dans : $TARGET"
+cv api Setting.create debug_enabled=0 backtrace=0 >/dev/null
 
 DEBUG_VAL=$(cv api Setting.getvalue name=debug_enabled)
 BACKTRACE_VAL=$(cv api Setting.getvalue name=backtrace)
 
 echo -e "${BLUE}[ INFO ]${NC} État actuel : debug=$DEBUG_VAL et backtrace=$BACKTRACE_VAL"
-echo -e "${GREEN}Mode debug ACTIVÉ.${NC}"
+echo -e "${GREEN}Mode debug DÉSACTIVÉ.${NC}"

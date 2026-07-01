@@ -61,8 +61,8 @@ cvdall   : Désactive toutes les extensions CiviCRM
 cvdall --cancel : annule la dernière opération de cvdall dans l'instance
 cvall    : Active toutes les extensions CiviCRM
 cvall --cancel : annule la dernière opération de cvall dans l'instance
-cvdeb    : Désactive le mode débigage et le backtrace (il faut se trouver dans le httpdocs)
-cvudeb   : Active le mode débigage et le backtrace (il faut se trouver dans le httpdocs)
+cvdeb    : Active le mode débogage et le backtrace (il faut se trouver dans le httpdocs)
+cvudeb   : Désactive le mode débogage et le backtrace (il faut se trouver dans le httpdocs)
 
 === Gérer une instance WordPress ===
 wpf     : Vider le cache de WordPress
