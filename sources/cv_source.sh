@@ -21,14 +21,23 @@ testCMS() {
 	local prev_pwd=$(pwd)
 
 	cd $racine
+    # echo "racine : $racine"
 	instance=$(find -maxdepth 2 -type d -name $instance 2> /dev/null | grep -v .rapid-scan-db | grep -v system)
 	cd $instance
+    # echo "instance : $instance"
 	test -d httpdocs && cd httpdocs && instance="$instance/httpdocs"
-    test -e wp-config.php && cms_instance="wordpress"
-    test -e sites/default/settings.php && cms_instance="drupal"
-    test -e web/sites/default/settings.php && cms_instance="drupal10+"
-    test -e private/civicrm.settings.php && cms_instance="standalone"
-    test -e settings.php && cms_instance="backdrop"
+    if [ -e wp-config.php ]; then
+        cms_instance="wordpress"
+    elif [ -e web/sites/default/settings.php ]; then
+        cms_instance="drupal10+"
+    elif [ -e sites/default/settings.php ]; then
+        cms_instance="drupal"
+    elif [ -e private/civicrm.settings.php ]; then
+        cms_instance="standalone"
+    elif [ -e settings.php ]; then
+        cms_instance="backdrop"
+    fi
+    # echo "CMS : $cms_instance"
     cd $prev_pwd
 }
 
@@ -61,7 +70,6 @@ ext(){
 
     cd "$path_ext"
 }
-
 
 fonction_test() {
     select_and_testCMS
@@ -164,29 +172,6 @@ cvff() {
         cd ./httpdocs
     fi
     cv flush && cv api4 System.flush && cv api4 System.flush triggers=1 && rep
-}
-
-#  a tester
-# ( ) → sous-shell, le cd n'affecte pas le shell parent
-# > /dev/null 2>&1 → silencer les commandes verbeuses
-# || { ... } → message d'erreur explicite si une commande échoue
-# Message informatif pour savoir où on en est
-cvffatester() {
-    ( # ( ) → sous-shell, le cd n'affecte pas le shell parent
-        [ -d httpdocs ] && cd ./httpdocs
-
-        echo -e "${BLUE}[ INFO ]${NC} Vidage des caches CiviCRM..."
-
-        # > /dev/null 2>&1 → silencer les commandes verbeuses
-        # || { ... } → message d'erreur explicite si une commande échoue
-        cv flush > /dev/null 2>&1 \
-        && cv api4 System.flush > /dev/null 2>&1 \
-        && cv api4 System.flush triggers=1 > /dev/null 2>&1 \
-        || { echo -e "${RED}[ ERREUR ]${NC} Échec du vidage des caches" ; exit 1; }
-
-        echo -e "${GREEN}[ OK ]${NC} Caches vidés."
-        rep
-    )
 }
 
 ### Script pour appliquer un patch depuis Github pour CiviCRM
