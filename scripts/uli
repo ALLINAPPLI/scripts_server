@@ -80,18 +80,47 @@ find_vhost_root() {
 
 find_docroot() {
   local vhost="$1"
-  # Priorité Plesk : httpdocs > public_html > www > racine vhost
-  for candidate in "$vhost/httpdocs" "$vhost/public_html" "$vhost/www" "$vhost"; do
-    if [[ -d "$candidate" ]] && \
-       { [[ -f "$candidate/wp-config.php" ]] || \
-         [[ -f "$candidate/sites/default/settings.php" ]] || \
-         [[ -f "$candidate/core/lib/Drupal.php" ]] || \
-         [[ -f "$candidate/index.php" ]]; }; then
-      echo "$candidate"
+
+  # Marqueurs recherchés
+  local markers=("wp-config.php" "sites/default/settings.php" "core/lib/Drupal.php")
+
+  # 1) Candidats classiques (Plesk + Drupal Composer avec docroot "web")
+  local candidates=(
+    "$vhost/httpdocs"
+    "$vhost/httpdocs/web"
+    "$vhost/httpdocs/docroot"
+    "$vhost/public_html"
+    "$vhost/public_html/web"
+    "$vhost/www"
+    "$vhost"
+  )
+
+  for candidate in "${candidates[@]}"; do
+    [[ -d "$candidate" ]] || continue
+    for marker in "${markers[@]}"; do
+      [[ -f "$candidate/$marker" ]] && echo "$candidate" && return 0
+    done
+    [[ -f "$candidate/index.php" ]] && echo "$candidate" && return 0
+  done
+
+  # 2) Fallback : recherche récursive (profondeur limitée pour rester rapide)
+  local found
+  found=$(find "$vhost" -maxdepth 4 \( -name "wp-config.php" -o -path "*/sites/default/settings.php" -o -path "*/core/lib/Drupal.php" \) 2>/dev/null | head -1)
+  if [[ -n "$found" ]]; then
+    # remonte de 2 niveaux si settings.php (sites/default/settings.php → docroot)
+    if [[ "$found" == *"sites/default/settings.php" ]]; then
+      dirname "$(dirname "$(dirname "$found")")"
+      return 0
+    elif [[ "$found" == *"core/lib/Drupal.php" ]]; then
+      dirname "$(dirname "$(dirname "$found")")"
+      return 0
+    else
+      dirname "$found"
       return 0
     fi
-  done
-  # Fallback : httpdocs même vide
+  fi
+
+  # 3) Dernier recours
   [[ -d "$vhost/httpdocs" ]] && echo "$vhost/httpdocs" && return 0
   echo "$vhost"
 }
@@ -254,7 +283,10 @@ drupal_autologin() {
     die "Drush introuvable. Installez-le via Composer ou https://drush.org"
   fi
 
-  local DRUSH="$drush --root=$DOCROOT"
+  # Détermine l'URI du site pour éviter le "http://default/..." de Drush
+  local SITE_URI="https://${SITE_DOMAIN}"
+
+  local DRUSH="$drush --root=$DOCROOT --uri=$SITE_URI"
 
   local UID_ARG="1"
   if [[ -z "$USER_ARG" || "$USER_ARG" == "admin" ]]; then
@@ -275,6 +307,7 @@ drupal_autologin() {
   echo -e "\n  ${GREEN}${BOLD}${URL}${RESET}\n"
   warn "Connecte directement — ne pas partager"
 }
+
 
 # ============================================================
 #  STANDALONE — CiviCRM
