@@ -82,6 +82,8 @@ wpudeb   : Désactiver le mode debug
 wpc      : Utiliser le cli en mode --allow-root
 wpm0     : Mode maintenance désactivé
 wpm1     : Mode maintenance activé
+wpai0    : Passer le WP_AI_SUPPORT à false DANS tous les wp-config.php
+wpai1    : Passer le WP_AI_SUPPORT à true DANS tous les wp-config.php
 
 === Gérer les extensions WordPress d’une instance ===
 wpgc     : `git clone` + activation de l’extension WordPress

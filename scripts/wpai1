@@ -1,0 +1,22 @@
+#!/bin/bash
+
+ROOT="/var/www/vhosts"
+
+find "$ROOT" -type f -name "wp-config.php" | while read -r FILE; do
+    echo "Traitement : $FILE"
+
+    if grep -qE "define[[:space:]]*\([[:space:]]*'WP_AI_SUPPORT'" "$FILE"; then
+        sed -i -E "s/define[[:space:]]*\([[:space:]]*'WP_AI_SUPPORT'[[:space:]]*,[[:space:]]*(true|false)[[:space:]]*\)[[:space:]]*;/define( 'WP_AI_SUPPORT', true );/" "$FILE"
+        echo "  -> Mis à true"
+    else
+        if grep -q "That's all, stop editing" "$FILE"; then
+            sed -i "/That's all, stop editing/i define( 'WP_AI_SUPPORT', true );" "$FILE"
+        else
+            echo "" >> "$FILE"
+            echo "define( 'WP_AI_SUPPORT', true );" >> "$FILE"
+        fi
+        echo "  -> Ajouté"
+    fi
+done
+
+echo "Terminé."

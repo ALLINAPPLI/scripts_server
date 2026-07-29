@@ -290,8 +290,8 @@ fichier_tmp = fichier + ".reserial.tmp"
 BLOB_COL_RE     = re.compile(r'\b(?:TINY|MEDIUM|LONG)?BLOB\b', re.IGNORECASE)
 TABLE_NAME_RE   = re.compile(r'CREATE TABLE `([^`]+)`')
 INSERT_RE       = re.compile(r'^INSERT INTO `([^`]+)`', re.IGNORECASE)
-pattern_escaped = re.compile(r's:\d+:\\"([^\\"]*?)\\";', re.DOTALL)
-pattern_normal  = re.compile(r's:\d+:"([^"]*?)";',       re.DOTALL)
+pattern_escaped = re.compile(r's:\d+:\\"((?:(?!\\";).)*?)\\";', re.DOTALL)
+pattern_normal  = re.compile(r's:\d+:"((?:(?!";).)*?)";',       re.DOTALL)
 
 # ─── Stats ───────────────────────────────────────────────────────────────────
 stats = {'changes': 0, 'tables': {}}
@@ -367,31 +367,31 @@ dump_type = 'MySQL escaped (\")' if is_dump else 'standard'
 print("Type dump : " + dump_type, file=sys.stderr)
 
 # ─── Pré-passe 2 : identifier les tables BLOB ────────────────────────────────
-print("Analyse des tables BLOB...", file=sys.stderr)
-tables_blob   = set()
-in_create     = False
-current_table = ''
-create_lines  = []
+# print("Analyse des tables BLOB...", file=sys.stderr)
+# tables_blob   = set()
+# in_create     = False
+# current_table = ''
+# create_lines  = []
 
-with open(fichier, 'rb') as f:
-    for raw_line in f:
-        line = raw_line.decode('latin-1')
-        m = TABLE_NAME_RE.search(line)
-        if m:
-            in_create     = True
-            current_table = m.group(1)
-            create_lines  = [line]
-            continue
-        if in_create:
-            create_lines.append(line)
-            if line.strip().startswith(')') and 'ENGINE' in line:
-                bloc = ''.join(create_lines)
-                if BLOB_COL_RE.search(bloc):
-                    tables_blob.add(current_table)
-                in_create    = False
-                create_lines = []
+# with open(fichier, 'rb') as f:
+#     for raw_line in f:
+#         line = raw_line.decode('latin-1')
+#         m = TABLE_NAME_RE.search(line)
+#         if m:
+#             in_create     = True
+#             current_table = m.group(1)
+#             create_lines  = [line]
+#             continue
+#         if in_create:
+#             create_lines.append(line)
+#             if line.strip().startswith(')') and 'ENGINE' in line:
+#                 bloc = ''.join(create_lines)
+#                 if BLOB_COL_RE.search(bloc):
+#                     tables_blob.add(current_table)
+#                 in_create    = False
+#                 create_lines = []
 
-print("Tables BLOB exclues : " + str(len(tables_blob)), file=sys.stderr)
+# print("Tables BLOB exclues : " + str(len(tables_blob)), file=sys.stderr)
 
 # ─── Passe principale : streaming ligne par ligne ─────────────────────────────
 print("Traitement des sérialisations...", file=sys.stderr)
@@ -402,7 +402,7 @@ in_insert     = False
 
 def flush_buffer(out, table_name, lines):
     seg = ''.join(lines)
-    if table_name and table_name not in tables_blob:
+    if table_name :
         if is_dump:
             seg = pattern_escaped.sub(make_fix_escaped(table_name), seg)
         else:
