@@ -1,0 +1,338 @@
+#!/bin/bash
+##
+## cvpatchcore
+## Auteur : (basé sur le script vcv, amélioré par Antoine BREHRERET)
+##
+#############################################################
+##
+##  Applique un patch sur civicrm_core pour toutes les
+##  instances CiviCRM d'un serveur Plesk dont la version
+##  CiviCRM est >= à une version choisie (ou "tous").
+##
+##  Le patch peut être fourni via une URL ou un chemin local.
+##  Une sauvegarde de civicrm-core est faite avant chaque patch,
+##  et un log complet de la campagne est généré.
+##
+#############################################################
+source "$CUSTOM_DIR/includes/functions.sh"
+
+RED="\033[0;31m"
+GREEN="\033[0;32m"
+YELLOW="\033[0;33m"
+BLUE="\033[1;34m"
+NC="\033[0m"
+
+tmp_folder="/tmp/cvpatchcore_tmp_$$"
+mkdir -p "$tmp_folder"
+MAX_JOBS=10
+
+# Dossiers de sauvegarde et de logs (persistants, hors du tmp qui sera supprimé)
+BACKUP_DIR="/var/backups/cvpatchcore"
+LOG_DIR="/var/log/cvpatchcore"
+mkdir -p "$BACKUP_DIR" "$LOG_DIR"
+LOG_FILE="$LOG_DIR/cvpatchcore_$(date +%Y%m%d_%H%M%S).log"
+touch "$LOG_FILE"
+
+log() {
+    # Écrit à la fois à l'écran et dans le fichier de log
+    echo -e "$1"
+    echo -e "$1" | sed -r 's/\x1B\[[0-9;]*[mK]//g' >> "$LOG_FILE"
+}
+
+#############################################################
+##  Compare deux versions "x.y.z" et renvoie 0 (vrai) si
+##  v1 >= v2, 1 (faux) sinon. Ignore les suffixes non numériques
+##  (ex: 5.65.1-beta -> 5.65.1)
+#############################################################
+version_ge() {
+    local v1="$1" v2="$2"
+    [[ -z "$v1" || "$v1" == "---" ]] && return 1
+    IFS='.' read -r -a a <<< "$v1"
+    IFS='.' read -r -a b <<< "$v2"
+    for i in 0 1 2 3; do
+        local ai=${a[$i]:-0} bi=${b[$i]:-0}
+        ai=${ai//[^0-9]/}; bi=${bi//[^0-9]/}
+        ai=${ai:-0}; bi=${bi:-0}
+        if ((ai > bi)); then return 0; fi
+        if ((ai < bi)); then return 1; fi
+    done
+    return 0
+}
+
+#############################################################
+##  Compare deux versions et renvoie :
+##   1  si v1 > v2
+##   0  si v1 == v2
+##   -1 si v1 < v2
+##  (utilisé pour calculer le min et le max)
+#############################################################
+version_cmp() {
+    local v1="$1" v2="$2"
+    IFS='.' read -r -a a <<< "$v1"
+    IFS='.' read -r -a b <<< "$v2"
+    for i in 0 1 2 3; do
+        local ai=${a[$i]:-0} bi=${b[$i]:-0}
+        ai=${ai//[^0-9]/}; bi=${bi//[^0-9]/}
+        ai=${ai:-0}; bi=${bi:-0}
+        if ((ai > bi)); then echo 1; return; fi
+        if ((ai < bi)); then echo -1; return; fi
+    done
+    echo 0
+}
+
+#############################################################
+##  Scanne un site : détecte le CMS, la version CiviCRM,
+##  et le chemin réel de civicrm-core (via `cv path`, ce qui
+##  fonctionne quel que soit le CMS : WordPress, Drupal,
+##  Standalone).
+#############################################################
+scan_site() {
+    local instance="$1"
+    local out_file="$tmp_folder/$instance.txt"
+    local httpdocs="$racine/$instance/httpdocs"
+
+    if [[ ! -d "$httpdocs" ]]; then
+        printf "%s|%s|%s|%s\n" "$instance" "N/A" "---" "---" > "$out_file"
+        return
+    fi
+
+    cd "$httpdocs" || return
+
+    # Détection du CMS : même ordre et mêmes tests que testCMS()
+    local cms="N/A" core_path="---"
+    if [[ -e "$httpdocs/wp-config.php" ]]; then
+        cms="wordpress"
+        core_path="$httpdocs/wp-content/plugins/civicrm/civicrm"
+    elif [[ -e "$httpdocs/web/sites/default/settings.php" ]]; then
+        cms="drupal10+"
+        local candidates=(
+            "$httpdocs/web/sites/default/files/civicrm"
+            "$httpdocs/web/sites/all/modules/civicrm"
+        )
+        for candidate in "${candidates[@]}"; do
+            [[ -d "$candidate" ]] && core_path="$candidate" && break
+        done
+    elif [[ -e "$httpdocs/sites/default/settings.php" ]]; then
+        cms="drupal"
+        local candidates=(
+            "$httpdocs/sites/default/files/civicrm"
+            "$httpdocs/sites/all/modules/civicrm"
+        )
+        for candidate in "${candidates[@]}"; do
+            [[ -d "$candidate" ]] && core_path="$candidate" && break
+        done
+    elif [[ -e "$httpdocs/private/civicrm.settings.php" ]]; then
+        cms="standalone"
+        core_path="$httpdocs/core"
+    elif [[ -e "$httpdocs/settings.php" ]]; then
+        cms="backdrop"
+        core_path="$httpdocs/modules/civicrm"
+    fi
+
+    # Repli sur `cv path` uniquement si le chemin attendu n'existe pas
+    # (multisite Drupal, arborescence custom, etc.) : plus lent mais fiable
+    if [[ "$cms" != "N/A" && ! -d "$core_path" ]]; then
+        core_path=$(cv path -d 'civicrm.root' 2>/dev/null)
+        [[ -z "$core_path" || ! -d "$core_path" ]] && core_path="---"
+    fi
+
+    local civi_version="---"
+    if [[ "$cms" != "N/A" ]]; then
+        civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1)
+        [[ -z "$civi_version" ]] && civi_version="---"
+    fi
+
+    printf "%s|%s|%s|%s\n" "$instance" "$cms" "$civi_version" "$core_path" > "$out_file"
+}
+
+#############################################################
+##  Récupère le patch (URL ou chemin local) et renvoie le
+##  chemin local du fichier patch prêt à être appliqué.
+#############################################################
+get_patch_file() {
+    local source="$1"
+    local dest="$tmp_folder/patch_a_appliquer.patch"
+
+    if [[ "$source" =~ ^https?:// ]]; then
+        log "${BLUE}⬇️  Téléchargement du patch depuis l'URL...${NC}"
+        if command -v curl &>/dev/null; then
+            curl -fsSL "$source" -o "$dest"
+        elif command -v wget &>/dev/null; then
+            wget -q "$source" -O "$dest"
+        else
+            log "${RED}❌ Ni curl ni wget disponibles pour télécharger le patch.${NC}"
+            return 1
+        fi
+        if [[ ! -s "$dest" ]]; then
+            log "${RED}❌ Échec du téléchargement du patch (fichier vide ou introuvable).${NC}"
+            return 1
+        fi
+    else
+        if [[ ! -f "$source" ]]; then
+            log "${RED}❌ Le chemin local du patch est introuvable : $source${NC}"
+            return 1
+        fi
+        cp "$source" "$dest"
+    fi
+
+    echo "$dest"
+}
+
+#############################################################
+##  Applique le patch sur un dossier civicrm-core donné.
+##  Fait d'abord un test à blanc (--dry-run) avec -p1 puis -p0
+##  pour détecter automatiquement le bon niveau de patch.
+##  Renvoie 0 si succès, 1 si échec.
+#############################################################
+apply_patch_to_core() {
+    local core_path="$1"
+    local patch_file="$2"
+    local instance="$3"
+
+    cd "$core_path" || return 1
+
+    local plevel=""
+    for p in 1 0; do
+        if patch -p"$p" --dry-run --silent < "$patch_file" &>/dev/null; then
+            plevel="$p"
+            break
+        fi
+    done
+
+    if [[ -z "$plevel" ]]; then
+        log "${RED}   ✗ Le patch ne s'applique pas proprement sur $instance (testé -p1 et -p0).${NC}"
+        return 1
+    fi
+
+    # Sauvegarde de civicrm-core avant application, pour pouvoir revenir en arrière
+    local backup_file="$BACKUP_DIR/${instance}_$(date +%Y%m%d_%H%M%S).tar.gz"
+    tar czf "$backup_file" -C "$(dirname "$core_path")" "$(basename "$core_path")" 2>/dev/null
+
+    if patch -p"$plevel" --silent < "$patch_file"; then
+        # On vide le cache CiviCRM après un patch, comme dans cvpatch
+        cd "$racine/$instance/httpdocs" 2>/dev/null && cv flush &>/dev/null
+        log "${GREEN}   ✓ Patch appliqué sur $instance (niveau -p$plevel). Sauvegarde : $backup_file${NC}"
+        return 0
+    else
+        log "${RED}   ✗ Échec de l'application du patch sur $instance malgré un dry-run positif.${NC}"
+        return 1
+    fi
+}
+
+#############################################################
+##  MAIN
+#############################################################
+main() {
+    log "${BLUE}🚀  cvpatchcore — Campagne de patch civicrm_core${NC}"
+    echo ""
+
+    # -------- 1. Version minimale demandée à l'utilisateur --------
+    read -rp "À partir de quelle version de CiviCRM voulez-vous appliquer le patch (ex: 5.65.0), ou tapez 'tous' pour toutes les instances : " version_input
+
+    local seuil
+    if [[ "$version_input" =~ ^(tous|all)$ ]]; then
+        seuil="0.0.0"
+        log "${YELLOW}➡️  Option choisie : TOUTES les instances CiviCRM seront ciblées.${NC}"
+    else
+        if [[ ! "$version_input" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            log "${RED}❌ Format de version invalide : $version_input${NC}"
+            exit 1
+        fi
+        seuil="$version_input"
+        log "${YELLOW}➡️  Seuil choisi : les instances avec CiviCRM >= $seuil seront ciblées.${NC}"
+    fi
+
+    # -------- 2. Scan de toutes les instances --------
+    echo ""
+    log "${BLUE}🔎  Scan des instances CiviCRM dans /var/www/vhosts...${NC}"
+
+    local list_site
+    list_site=$(getcvsites)
+
+    for instance in $list_site; do
+        [[ -z "$instance" ]] && continue
+        scan_site "$instance" &
+        while (( $(jobs -r | wc -l) >= MAX_JOBS )); do sleep 0.1; done
+    done
+    wait
+
+    # -------- 3. Calcul de la version min et max détectées --------
+    local min_ver="" max_ver=""
+    while IFS='|' read -r instance cms civi_version core_path; do
+        [[ "$civi_version" == "---" || -z "$civi_version" ]] && continue
+        if [[ -z "$min_ver" ]]; then
+            min_ver="$civi_version"
+            max_ver="$civi_version"
+        else
+            [[ $(version_cmp "$civi_version" "$min_ver") -lt 0 ]] && min_ver="$civi_version"
+            [[ $(version_cmp "$civi_version" "$max_ver") -gt 0 ]] && max_ver="$civi_version"
+        fi
+    done < <(cat "$tmp_folder"/*.txt)
+
+    echo ""
+    log "${BLUE}📊  Versions CiviCRM détectées sur le serveur :${NC}"
+    log "    Version minimale : ${YELLOW}${min_ver:-N/A}${NC}"
+    log "    Version maximale : ${YELLOW}${max_ver:-N/A}${NC}"
+
+    # -------- 4. Emplacement du patch --------
+    echo ""
+    read -rp "Où se trouve le patch à appliquer ? (URL ou chemin local sur le serveur) : " patch_source
+
+    local patch_file
+    patch_file=$(get_patch_file "$patch_source") || exit 1
+    log "${GREEN}✅  Patch prêt : $patch_file${NC}"
+
+    # -------- 5. Liste des sites ciblés + récapitulatif --------
+    echo ""
+    log "${BLUE}📋  Sites ciblés par cette campagne (CiviCRM >= $seuil) :${NC}"
+
+    local targets=()
+    while IFS='|' read -r instance cms civi_version core_path; do
+        [[ "$civi_version" == "---" || "$core_path" == "---" ]] && continue
+        if version_ge "$civi_version" "$seuil"; then
+            targets+=("$instance|$cms|$civi_version|$core_path")
+            log "    - $instance ($cms, CiviCRM $civi_version)"
+        fi
+    done < <(cat "$tmp_folder"/*.txt)
+
+    if [[ ${#targets[@]} -eq 0 ]]; then
+        log "${YELLOW}⚠️  Aucun site ne correspond à ce critère. Fin du script.${NC}"
+        rm -rf "$tmp_folder"
+        exit 0
+    fi
+
+    echo ""
+    read -rp "Confirmer l'application du patch sur ces ${#targets[@]} site(s) ? (o/n) : " confirmation
+    if [[ ! "$confirmation" =~ ^[oOyY] ]]; then
+        log "${YELLOW}❎  Annulé par l'utilisateur.${NC}"
+        rm -rf "$tmp_folder"
+        exit 0
+    fi
+
+    # -------- 6. Application du patch sur chaque site ciblé --------
+    echo ""
+    log "${BLUE}🛠️  Application du patch...${NC}"
+
+    local ok_count=0 fail_count=0
+    for target in "${targets[@]}"; do
+        IFS='|' read -r instance cms civi_version core_path <<< "$target"
+        log "${BLUE}➡️  $instance ($cms, CiviCRM $civi_version)${NC}"
+        if apply_patch_to_core "$core_path" "$patch_file" "$instance"; then
+            ((ok_count++))
+        else
+            ((fail_count++))
+        fi
+    done
+
+    # -------- 7. Résumé final --------
+    echo ""
+    log "${BLUE}📈  Résumé de la campagne :${NC}"
+    log "    Sites patchés avec succès : ${GREEN}$ok_count${NC}"
+    log "    Sites en échec            : ${RED}$fail_count${NC}"
+    log "    Sauvegardes dans          : $BACKUP_DIR"
+    log "    Log complet               : $LOG_FILE"
+
+    rm -rf "$tmp_folder"
+}
+
+main

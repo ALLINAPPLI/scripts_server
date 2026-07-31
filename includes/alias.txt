@@ -57,10 +57,11 @@ cvextup  : Met à jour le code de toutes les extensions CiviCRM pour une nouvell
 cvallup  : Met à jour toutes les extensions de CiviCRM
 
 === Gérer une instance CiviCRM ===
-cvup     : Mise à jour de la BDD CiviCRM de l’instance
-cvf      : Vidage simple du cache de CiviCRM
-cvff     : Flush complet — vidage du cache de CiviCRM + reconstruction des déclencheurs ; plus lent mais plus profond que `cvf`
-cvpatch  : Patch du core de CiviCRM, depuis GitHub
+cvup        : Mise à jour de la BDD CiviCRM de l’instance
+cvf         : Vidage simple du cache de CiviCRM
+cvff        : Flush complet — vidage du cache de CiviCRM + reconstruction des déclencheurs ; plus lent mais plus profond que `cvf`
+cvpatch     : Patch du core de CiviCRM, depuis GitHub
+cvpatchcore : Patch du core de CiviCRM, pour toutes les instances
 
 cvdall   : Désactive toutes les extensions CiviCRM
 cvdall --cancel           : annule la dernière opération de cvdall dans l'instance

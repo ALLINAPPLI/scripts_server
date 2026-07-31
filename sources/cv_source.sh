@@ -196,6 +196,10 @@ cvpatch() {
     if [ "$cms_instance" == "drupal" ]; then
         cd $instance/sites/all/modules/civicrm/
    	fi
+    
+    if [ "$cms_instance" == "drupal10+" ]; then
+        cd $instance/web/sites/default/files/civicrm
+   	fi
 
     if [ "$cms_instance" == "standalone" ]; then
         cd $instance/core
