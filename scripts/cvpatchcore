@@ -7,7 +7,7 @@
 ##
 ##  Applique un patch sur civicrm_core pour toutes les
 ##  instances CiviCRM d'un serveur Plesk dont la version
-##  CiviCRM est >= à une version choisie (ou "tous").
+##  CiviCRM est >= à une version choisie (ou "all").
 ##
 ##  Le patch peut être fourni via une URL ou un chemin local.
 ##  Une sauvegarde de civicrm-core est faite avant chaque patch,
@@ -103,27 +103,29 @@ scan_site() {
     if [[ -e "$httpdocs/wp-config.php" ]]; then
         cms="wordpress"
         core_path="$httpdocs/wp-content/plugins/civicrm/civicrm"
+
     elif [[ -e "$httpdocs/web/sites/default/settings.php" ]]; then
         cms="drupal10+"
         local candidates=(
-            "$httpdocs/web/sites/default/files/civicrm"
-            "$httpdocs/web/sites/all/modules/civicrm"
+            "$httpdocs/vendor/civicrm/civicrm-core"
         )
         for candidate in "${candidates[@]}"; do
             [[ -d "$candidate" ]] && core_path="$candidate" && break
         done
+
     elif [[ -e "$httpdocs/sites/default/settings.php" ]]; then
         cms="drupal"
         local candidates=(
-            "$httpdocs/sites/default/files/civicrm"
             "$httpdocs/sites/all/modules/civicrm"
         )
         for candidate in "${candidates[@]}"; do
             [[ -d "$candidate" ]] && core_path="$candidate" && break
         done
+
     elif [[ -e "$httpdocs/private/civicrm.settings.php" ]]; then
         cms="standalone"
         core_path="$httpdocs/core"
+        
     elif [[ -e "$httpdocs/settings.php" ]]; then
         cms="backdrop"
         core_path="$httpdocs/modules/civicrm"
@@ -182,6 +184,8 @@ get_patch_file() {
 ##  Applique le patch sur un dossier civicrm-core donné.
 ##  Fait d'abord un test à blanc (--dry-run) avec -p1 puis -p0
 ##  pour détecter automatiquement le bon niveau de patch.
+##  En cas d'échec des deux niveaux, relance un dry-run verbeux
+##  et loggue la sortie pour faciliter le diagnostic.
 ##  Renvoie 0 si succès, 1 si échec.
 #############################################################
 apply_patch_to_core() {
@@ -201,6 +205,16 @@ apply_patch_to_core() {
 
     if [[ -z "$plevel" ]]; then
         log "${RED}   ✗ Le patch ne s'applique pas proprement sur $instance (testé -p1 et -p0).${NC}"
+        # Diagnostic : on relance un dry-run (niveau -p1) sans --silent pour
+        # voir la sortie normale de patch et identifier le fichier/hunk fautif.
+        # NB: ne pas utiliser -v ici, qui dans certaines versions de GNU patch
+        # (ex: 2.7.6) équivaut à --version et n'affiche donc que la bannière.
+        local diag
+        diag=$(patch -p1 --dry-run < "$patch_file" 2>&1)
+        log "${YELLOW}   ↳ Diagnostic (patch -p1 --dry-run) :${NC}"
+        while IFS= read -r line; do
+            log "     $line"
+        done <<< "$diag"
         return 1
     fi
 
@@ -226,24 +240,16 @@ main() {
     log "${BLUE}🚀  cvpatchcore — Campagne de patch civicrm_core${NC}"
     echo ""
 
-    # -------- 1. Version minimale demandée à l'utilisateur --------
-    read -rp "À partir de quelle version de CiviCRM voulez-vous appliquer le patch (ex: 5.65.0), ou tapez 'tous' pour toutes les instances : " version_input
-
-    local seuil
-    if [[ "$version_input" =~ ^(tous|all)$ ]]; then
-        seuil="0.0.0"
-        log "${YELLOW}➡️  Option choisie : TOUTES les instances CiviCRM seront ciblées.${NC}"
-    else
-        if [[ ! "$version_input" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
-            log "${RED}❌ Format de version invalide : $version_input${NC}"
-            exit 1
-        fi
-        seuil="$version_input"
-        log "${YELLOW}➡️  Seuil choisi : les instances avec CiviCRM >= $seuil seront ciblées.${NC}"
+    # -------- 0. Vérification des dépendances --------
+    if ! command -v patch &>/dev/null; then
+        log "${RED}❌ La commande 'patch' n'est pas installée sur ce serveur.${NC}"
+        log "${YELLOW}   Installez-la avec : yum install patch -y   (CentOS/AlmaLinux/RHEL)${NC}"
+        log "${YELLOW}   ou                : apt-get install patch -y   (Debian/Ubuntu)${NC}"
+		log "${BLUE} Pour connaitre votre version de linux tapez cat /etc/os-release ${NC}"
+        exit 1
     fi
 
-    # -------- 2. Scan de toutes les instances --------
-    echo ""
+    # -------- 1. Scan de toutes les instances (fait en premier) --------
     log "${BLUE}🔎  Scan des instances CiviCRM dans /var/www/vhosts...${NC}"
 
     local list_site
@@ -256,7 +262,7 @@ main() {
     done
     wait
 
-    # -------- 3. Calcul de la version min et max détectées --------
+    # -------- 2. Calcul de la version min et max détectées --------
     local min_ver="" max_ver=""
     while IFS='|' read -r instance cms civi_version core_path; do
         [[ "$civi_version" == "---" || -z "$civi_version" ]] && continue
@@ -273,6 +279,24 @@ main() {
     log "${BLUE}📊  Versions CiviCRM détectées sur le serveur :${NC}"
     log "    Version minimale : ${YELLOW}${min_ver:-N/A}${NC}"
     log "    Version maximale : ${YELLOW}${max_ver:-N/A}${NC}"
+
+    # -------- 3. Version minimale demandée à l'utilisateur (défaut : all) --------
+    echo ""
+    read -rp "À partir de quelle version de CiviCRM voulez-vous appliquer le patch (ex: 5.65.0), ou tapez 'all' pour toutes les instances [all] : " version_input
+    version_input="${version_input:-all}"
+
+    local seuil
+    if [[ "$version_input" =~ ^(tous|all)$ ]]; then
+        seuil="0.0.0"
+        log "${YELLOW}➡️  Option choisie : TOUTES les instances CiviCRM seront ciblées.${NC}"
+    else
+        if [[ ! "$version_input" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+            log "${RED}❌ Format de version invalide : $version_input${NC}"
+            exit 1
+        fi
+        seuil="$version_input"
+        log "${YELLOW}➡️  Seuil choisi : les instances avec CiviCRM >= $seuil seront ciblées.${NC}"
+    fi
 
     # -------- 4. Emplacement du patch --------
     echo ""
@@ -291,7 +315,7 @@ main() {
         [[ "$civi_version" == "---" || "$core_path" == "---" ]] && continue
         if version_ge "$civi_version" "$seuil"; then
             targets+=("$instance|$cms|$civi_version|$core_path")
-            log "    - $instance ($cms, CiviCRM $civi_version)"
+            log "    - $instance ($cms, CiviCRM $civi_version) — core: $core_path"
         fi
     done < <(cat "$tmp_folder"/*.txt)
 
@@ -316,7 +340,7 @@ main() {
     local ok_count=0 fail_count=0
     for target in "${targets[@]}"; do
         IFS='|' read -r instance cms civi_version core_path <<< "$target"
-        log "${BLUE}➡️  $instance ($cms, CiviCRM $civi_version)${NC}"
+        log "${BLUE}➡️  $instance ($cms, CiviCRM $civi_version) — core: $core_path${NC}"
         if apply_patch_to_core "$core_path" "$patch_file" "$instance"; then
             ((ok_count++))
         else
