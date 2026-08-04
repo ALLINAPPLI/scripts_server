@@ -54,15 +54,24 @@ process_site() {
         cms_ver=$(wp core version --allow-root 2>/dev/null || "---")
         [[ -f "wp-content/uploads/civicrm/civicrm.settings.php" ]] && \
         civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+
+    elif [[ -f "web/sites/default/settings.php" ]]; then
+        cms="drupal10+"
+        cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+        [[ -f "web/sites/default/civicrm.settings.php" ]] && \
+        civi_version=$(cv status 2>/dev/null | awk -F'|' '/^[[:space:]]*\| civicrm[[:space:]]*\|/ {gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3; exit}'); civi_version=${civi_version:-"---"}
+
     elif [[ -f "sites/default/settings.php" ]]; then
         cms="drupal"
         cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
         [[ -f "sites/default/civicrm.settings.php" ]] && \
         civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+
     elif [[ -f "private/civicrm.settings.php" ]]; then
         cms="standalone"
         cms_ver=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
         civi_version=$cms_ver
+
     elif [[ -f "settings.php" ]]; then
         cms="backdrop"; cms_ver="---"
     else
