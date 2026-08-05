@@ -1,0 +1,78 @@
+#!/bin/bash
+##
+## Créer par Antoine BREHRERET
+##
+#############################################################
+##
+##  restaurer un bdd mysql
+##  pump > PATH_AND_FILE.sql
+##
+#############################################################
+
+set -euo pipefail
+
+# Vérification du paramètre
+if [ $# -ne 1 ]; then
+    echo "Usage : $(basename "$0") <fichier.sql>"
+    exit 1
+fi
+
+SQL_FILE="$1"
+
+if [ ! -f "$SQL_FILE" ]; then
+    echo "Erreur : le fichier '$SQL_FILE' est introuvable."
+    exit 1
+fi
+
+# Vérification que l'on est dans un domaine Plesk
+path=$(pwd)
+
+if [[ ! "$path" =~ ^/var/www/vhosts/[^/]+(/.*)?$ ]]; then
+    echo "Erreur : vous n'êtes pas dans un domaine (/var/www/vhosts/<domaine>)."
+    exit 1
+fi
+
+# Se placer dans httpdocs si présent
+if [ -d httpdocs ]; then
+    cd httpdocs
+fi
+
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
+source "$CUSTOM_DIR/includes/functions.sh"
+
+path=$(pwd)
+subscription=$(echo "$path" | cut -d'/' -f5)
+second=$(echo "$path" | cut -d'/' -f6)
+
+if [ "$second" = "httpdocs" ]; then
+    folder_source="$subscription"
+else
+    folder_source="$second"
+fi
+
+echo "Domaine : $folder_source"
+
+result="$(get_instance_cms "$folder_source")" || exit 1
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+
+echo "Base      : $mysql_source_database"
+echo "Utilisateur : $mysql_source_user"
+echo "Fichier   : $SQL_FILE"
+
+read -p "Restaurer cette sauvegarde ? (o/N) : " rep
+
+case "$rep" in
+    o|O|oui|OUI)
+        ;;
+    *)
+        echo "Annulé."
+        exit 0
+        ;;
+esac
+
+mysql \
+    -u "$mysql_source_user" \
+    -p"$mysql_source_mdp" \
+    "$mysql_source_database" < "$SQL_FILE"
+
+echo "Restauration terminée."
