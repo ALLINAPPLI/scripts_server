@@ -34,10 +34,12 @@ vcms     : Affichage de toutes les instances avec leur version de CMS et PHP
 
 === Manipulations de base de données ===
 dump     : Récupère l’intégralité de la base de données ; si aucune instruction complémentaire n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal
+pump     : Restaurer une bdd d'un domaine. Appel pump < PATH_AND_FILE.sql
 getbdd   : Récupèrer les identifiants de la base de données de l’instance courante
 repbdd   : Réparer une base de données (surtout pour vérifier les chaines sérialisées)
 sql      : Ouvre le terminal SQL de l’instance courante, peut être utilisé sous la forme `sql < fichier.sql`
 vidage   : Vider (purger) la base de données MySQL d'un site hébergé. 
+
 
 === Lister les extensions CiviCRM ===
 list     : Lister toutes les extensions présentes
