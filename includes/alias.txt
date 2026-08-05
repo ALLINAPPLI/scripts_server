@@ -117,6 +117,6 @@ getgits  : Récupérer les git des extensions Civicrm d'un site
 ext         : Se positionner sur le dossier ext d'un domaine
 get_sites   : lister les domaines/sites disponibles 
 getcvsites  : Récupérer tous les sites civicrm du serveur 
-cleanupdir  : Permet de supprimer des fichiers d'un dossier plus vieux qu'un durée (ex :  cleanupdir PATH 3m(3mmois) OU cleanupdir PATH 7d OU  cleanupdir PATH 12h )
+cleanupdir.sh  : Permet de supprimer des fichiers d'un dossier plus vieux qu'un durée (ex :  cleanupdir.sh PATH 3m(3mmois) OU cleanupdir.sh PATH 7d OU  cleanupdir.sh PATH 12h )
 
 
