@@ -342,6 +342,7 @@ main() {
         IFS='|' read -r instance cms civi_version core_path <<< "$target"
         log "${BLUE}➡️  $instance ($cms, CiviCRM $civi_version) — core: $core_path${NC}"
         if apply_patch_to_core "$core_path" "$patch_file" "$instance"; then
+            ( cd "$racine/$instance" 2>/dev/null && rep )
             ((ok_count++))
         else
             ((fail_count++))
