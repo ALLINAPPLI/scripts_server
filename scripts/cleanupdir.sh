@@ -1,21 +1,25 @@
 #!/usr/bin/env bash
 #
-# cleanupdir.sh
-# Supprime les fichiers d'un dossier plus vieux qu'une durée donnée.
+# cleanup_dossier.sh
+# Supprime récursivement les fichiers d'un dossier (et sous-dossiers)
+# plus vieux qu'une durée donnée.
 #
 # Usage :
-#   ./cleanupdir.sh /chemin/du/dossier 7d
-#   ./cleanupdir.sh /chemin/du/dossier 12h
-#   ./cleanupdir.sh /chemin/du/dossier 3m    (mois, approx 30j/mois)
+#   ./cleanup_dossier.sh /chemin/du/dossier 7d
+#   ./cleanup_dossier.sh /chemin/du/dossier 12h
+#   ./cleanup_dossier.sh /chemin/du/dossier 3m
 #
-# Paramètres possibles pour la durée : Nh (heures), Nd (jours), Nm (mois)
+# Options :
+#   DRY_RUN=1        -> simulation, rien n'est supprimé
+#   DELETE_EMPTY=1   -> supprime aussi les dossiers vides restants après nettoyage
 
 set -euo pipefail
 
 DOSSIER="${1:-}"
 DUREE="${2:-7d}"
-LOGFILE="/var/log/cleanupdir.log"
-DRY_RUN="${DRY_RUN:-0}"   # DRY_RUN=1 pour tester sans supprimer
+LOGFILE="/var/log/cleanup_dossier.log"
+DRY_RUN="${DRY_RUN:-0}"
+DELETE_EMPTY="${DELETE_EMPTY:-0}"
 
 if [[ -z "$DOSSIER" ]]; then
     echo "Usage: $0 <dossier> <durée: Nh|Nd|Nm>"
@@ -27,7 +31,6 @@ if [[ ! -d "$DOSSIER" ]]; then
     exit 1
 fi
 
-# Extraction du nombre et de l'unité (h/d/m)
 if [[ "$DUREE" =~ ^([0-9]+)([hdm])$ ]]; then
     NOMBRE="${BASH_REMATCH[1]}"
     UNITE="${BASH_REMATCH[2]}"
@@ -36,23 +39,27 @@ else
     exit 1
 fi
 
-# Conversion en minutes pour find -mmin
 case "$UNITE" in
     h) MINUTES=$(( NOMBRE * 60 )) ;;
     d) MINUTES=$(( NOMBRE * 60 * 24 )) ;;
-    m) MINUTES=$(( NOMBRE * 60 * 24 * 30 )) ;;  # approximation
+    m) MINUTES=$(( NOMBRE * 60 * 24 * 30 )) ;;
 esac
 
 TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
 
-echo "[$TIMESTAMP] Nettoyage de '$DOSSIER' (fichiers > $DUREE, soit $MINUTES min)" >> "$LOGFILE"
+echo "[$TIMESTAMP] Nettoyage récursif de '$DOSSIER' (fichiers > $DUREE, soit $MINUTES min)" >> "$LOGFILE"
 
 if [[ "$DRY_RUN" == "1" ]]; then
-    # Mode test : liste seulement, ne supprime rien
-    find "$DOSSIER" -maxdepth 1 -type f -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
+    # Simulation : liste tous les fichiers concernés, dossiers inclus
+    find "$DOSSIER" -type f -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
 else
-    # Suppression réelle, avec log de chaque fichier supprimé
-    find "$DOSSIER" -maxdepth 1 -type f -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
+    # Suppression réelle des fichiers, récursive
+    find "$DOSSIER" -type f -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
+
+    # Suppression optionnelle des dossiers vides restants
+    if [[ "$DELETE_EMPTY" == "1" ]]; then
+        find "$DOSSIER" -mindepth 1 -type d -empty -print -delete >> "$LOGFILE" 2>&1
+    fi
 fi
 
 echo "[$TIMESTAMP] Nettoyage terminé." >> "$LOGFILE"

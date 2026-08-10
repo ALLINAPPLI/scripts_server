@@ -1,0 +1,336 @@
+#!/bin/bash
+##
+#############################################################
+##
+##  search_delete_all
+##
+##  Boucle sur tous les domaines présents dans /var/www/vhosts,
+##  détecte les credentials MySQL de chacun via get_instance_cms,
+##  et applique la recherche/suppression d'une occurrence dans
+##  toutes les tables texte de la base correspondante.
+##
+##  Les domaines qui partagent la même base (alias, sous-domaines
+##  pointant sur le même site...) ne sont traités qu'une seule fois.
+##
+##  Usage :
+##    search_delete_all search  <valeur>
+##    search_delete_all delete  <valeur>
+##
+##  Exemple :
+##    search_delete_all search it-support@akunlama.com
+##    search_delete_all delete it-support@akunlama.com
+##
+#############################################################
+
+# set -u  : erreur si on utilise une variable non définie (protection
+#           contre les fautes de frappe de variables).
+# set -o pipefail : un pipe (cmd1 | cmd2) échoue si cmd1 échoue, même
+#           si cmd2 réussit. Pas de "set -e" ici volontairement : on
+#           veut pouvoir continuer la boucle même si un domaine échoue.
+set -uo pipefail
+
+# Dossier racine des vhosts Plesk. Modifiable via variable d'env.
+VHOSTS_DIR="${VHOSTS_DIR:-/var/www/vhosts}"
+
+# Dossier de sauvegarde avant suppression. Modifiable via variable d'env.
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/mysql_before_delete}"
+
+# Liste des dossiers présents dans /var/www/vhosts à ignorer car ce
+# ne sont pas de vrais domaines (dossiers techniques Plesk).
+# Modifiable via variable d'env (liste séparée par des espaces).
+SKIP_DIRS="${SKIP_DIRS:-default chroot system .skel}"
+
+# --------------------------------------------------------------------
+# Condition : vérifie que le script a reçu exactement 2 arguments.
+# --------------------------------------------------------------------
+if [ $# -ne 2 ]; then
+    echo "Usage : $(basename "$0") search|delete <valeur>"
+    exit 1
+fi
+
+MODE="$1"
+VALUE="$2"
+
+# --------------------------------------------------------------------
+# Condition : le mode doit être "search" ou "delete", rien d'autre.
+# --------------------------------------------------------------------
+if [ "$MODE" != "search" ] && [ "$MODE" != "delete" ]; then
+    echo "Erreur : le mode doit être 'search' ou 'delete'."
+    exit 1
+fi
+
+# ======================================================================
+# MISE EN PLACE DU LOG
+# ======================================================================
+# Dossier où seront stockés les fichiers de log. Modifiable via
+# variable d'environnement LOG_DIR si besoin.
+LOG_DIR="${LOG_DIR:-/var/log/mysql_search_delete}"
+
+# Crée le dossier de log s'il n'existe pas déjà.
+mkdir -p "$LOG_DIR" 2>/dev/null
+
+# Condition : si la création du dossier échoue (droits insuffisants,
+# partition en lecture seule...), on prévient sur la sortie standard
+# d'erreur mais on NE bloque PAS le script pour autant : le scan de
+# tous les domaines reste plus important que le log lui-même.
+if [ ! -d "$LOG_DIR" ]; then
+    echo "Attention : impossible de créer $LOG_DIR, le log ne sera pas écrit." >&2
+fi
+
+# Horodatage au format yyyymmdd_HHMMSS, utilisé dans le nom du fichier
+# de log pour que chaque exécution ait son propre fichier, sans jamais
+# écraser une exécution précédente.
+LOG_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Nom du fichier : le suffixe (_search.log ou _delete.log) reprend
+# directement le mode demandé, comme spécifié.
+LOG_FILE="${LOG_DIR}/${LOG_TIMESTAMP}_${MODE}.log"
+
+# Redirection globale : à partir de cette ligne, tout ce qui est
+# affiché à l'écran (echo, sortie de mysql/mysqldump, messages
+# d'erreur redirigés en 2>&1) est A LA FOIS affiché normalement ET
+# ajouté au fichier de log, grâce à "tee -a".
+#   exec > >(tee -a "$LOG_FILE") 2>&1
+#   - "exec >" redirige en permanence la sortie standard du script
+#     (pas juste une seule commande) vers ce qui suit.
+#   - ">(tee -a "$LOG_FILE")" est une "process substitution" : tee
+#     reçoit tout ce qui est écrit, l'affiche sur le terminal (son
+#     comportement normal) ET l'ajoute (-a) au fichier de log.
+#   - "2>&1" redirige aussi les erreurs (stderr) vers la même
+#     destination, donc les messages d'erreur sont également loggués.
+if [ -d "$LOG_DIR" ]; then
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "=========================================================="
+    echo " Log de cette exécution : $LOG_FILE"
+    echo " Date/heure : $(date '+%Y-%m-%d %H:%M:%S')"
+    echo " Commande   : $(basename "$0") $MODE $VALUE"
+    echo "=========================================================="
+fi
+
+# Charge les fonctions existantes du serveur (dont get_instance_cms).
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
+source "$CUSTOM_DIR/includes/functions.sh"
+
+# Charge nos fonctions communes (so_run_mysql, so_backup_db, so_process_db).
+# Condition : si le fichier lib_search_delete est introuvable ou que
+# le "source" échoue pour une autre raison, on arrête le script tout
+# de suite avec un message clair, plutôt que de continuer et planter
+# bien plus loin avec une erreur confuse "command not found".
+LIB_PATH="$(dirname "$(readlink -f "$0")")/lib_search_delete"
+if [ ! -f "$LIB_PATH" ]; then
+    echo "Erreur : fichier lib introuvable : $LIB_PATH"
+    echo "Vérifiez qu'il est bien présent dans le même dossier que ce script."
+    exit 1
+fi
+source "$LIB_PATH" || {
+    echo "Erreur : impossible de charger $LIB_PATH"
+    exit 1
+}
+
+# --------------------------------------------------------------------
+# Condition : le dossier des vhosts doit exister, sinon impossible de
+# continuer.
+# --------------------------------------------------------------------
+if [ ! -d "$VHOSTS_DIR" ]; then
+    echo "Erreur : $VHOSTS_DIR introuvable."
+    exit 1
+fi
+
+# ======================================================================
+# ÉTAPE 1 : on parcourt tous les domaines et on construit la liste des
+# bases à traiter, en évitant les doublons (deux domaines peuvent
+# pointer sur la même base).
+# ======================================================================
+
+# Tableaux associatifs (clé => valeur) utilisés pour le dédoublonnage :
+#   SEEN_DB[clé]      = 1 si cette base a déjà été rencontrée
+#   TODO_DB[clé]      = "user pass host db" à traiter
+#   TODO_DOMAINS[clé] = liste des noms de domaine associés à cette base
+#                       (juste pour l'affichage récapitulatif)
+declare -A SEEN_DB
+declare -A TODO_DB
+declare -A TODO_DOMAINS
+
+# Boucle principale : parcourt chaque sous-dossier direct de
+# /var/www/vhosts (le "*/" final ne matche que les dossiers, pas les
+# fichiers).
+for domain_path in "$VHOSTS_DIR"/*/; do
+
+    # Condition de garde : si jamais le glob ne matche rien (dossier
+    # vide), "$domain_path" contiendrait le motif littéral "*/" au
+    # lieu d'un vrai dossier ; on vérifie donc que c'est bien un
+    # dossier existant avant de continuer.
+    [ -d "$domain_path" ] || continue
+
+    # Extrait juste le nom du domaine (dernier segment du chemin).
+    domain=$(basename "$domain_path")
+
+    # Boucle interne : compare le nom du domaine courant à chaque
+    # entrée de la liste des dossiers à ignorer.
+    skip=0
+    for s in $SKIP_DIRS; do
+        # Condition : si ça correspond à un dossier technique, on
+        # marque "skip=1" et on arrête cette boucle interne (inutile
+        # de comparer aux entrées suivantes).
+        [ "$domain" = "$s" ] && skip=1 && break
+    done
+
+    # Condition : si le domaine est dans la liste à ignorer, on passe
+    # directement au domaine suivant de la boucle principale.
+    [ "$skip" -eq 1 ] && continue
+
+    # Appelle get_instance_cms pour ce domaine. Si la fonction échoue
+    # (CMS non reconnu, dossier vide, etc.), on affiche un message et
+    # on passe au domaine suivant sans bloquer tout le script.
+    result="$(get_instance_cms "$domain" 2>/dev/null)" || {
+        echo "-- $domain : ignoré (get_instance_cms a échoué, pas de CMS détecté)"
+        continue
+    }
+    read cms_instance mysql_db mysql_user mysql_pass <<< "$result"
+
+    # Condition : si la base ou l'utilisateur n'a pas pu être détecté
+    # (valeur vide), on ignore ce domaine plutôt que de tenter une
+    # connexion MySQL vouée à l'échec.
+    if [ -z "$mysql_db" ] || [ -z "$mysql_user" ]; then
+        echo "-- $domain : ignoré (base/utilisateur non détecté)"
+        continue
+    fi
+
+    # Construit une clé unique identifiant "cette base précise, avec
+    # cet utilisateur, sur cet hôte" pour le dédoublonnage.
+    key="${mysql_user}@127.0.0.1:${mysql_db}"
+
+    # Condition : si cette clé n'a encore jamais été vue, on
+    # l'enregistre comme nouvelle base à traiter. Sinon (la base a
+    # déjà été rencontrée via un autre domaine), on ajoute simplement
+    # ce domaine à la liste d'affichage, sans dupliquer le traitement.
+    if [ -z "${SEEN_DB[$key]:-}" ]; then
+        SEEN_DB[$key]=1
+        TODO_DB[$key]="$mysql_user $mysql_pass 127.0.0.1 $mysql_db"
+        TODO_DOMAINS[$key]="$domain"
+    else
+        TODO_DOMAINS[$key]="${TODO_DOMAINS[$key]}, $domain"
+    fi
+done
+
+# --------------------------------------------------------------------
+# Condition : si aucune base n'a été détectée sur tout le serveur, on
+# arrête le script proprement (rien à faire).
+# --------------------------------------------------------------------
+if [ "${#TODO_DB[@]}" -eq 0 ]; then
+    echo "Aucune base détectée sur le serveur."
+    exit 0
+fi
+
+echo "=========================================================="
+echo " Mode        : $MODE"
+echo " Valeur      : $VALUE"
+echo " Bases à examiner: ${#TODO_DB[@]}"
+
+# Boucle d'affichage récapitulatif : liste chaque base qui sera
+# examinée, avec le ou les domaines qui y correspondent.
+for key in "${!TODO_DB[@]}"; do
+    read u p h d <<< "${TODO_DB[$key]}"
+    echo "   - $d  (domaine(s): ${TODO_DOMAINS[$key]})"
+done
+echo "=========================================================="
+echo
+
+# ======================================================================
+# ÉTAPE 2 : PASSE DE RECHERCHE sur TOUTES les bases, quel que soit le
+# mode demandé. On ne sait pas encore, avant cette étape, quelles
+# bases contiennent réellement l'occurrence recherchée.
+#
+# On construit ici la liste MATCHED_DB : uniquement les bases où au
+# moins une occurrence a été trouvée. C'est cette liste, et elle
+# seule, qui sera ensuite sauvegardée puis nettoyée en mode "delete".
+# ======================================================================
+
+# Tableau associatif des bases où l'occurrence a réellement été
+# trouvée (sous-ensemble de TODO_DB).
+declare -A MATCHED_DB
+
+# Boucle de recherche : on interroge chaque base une par une.
+for key in "${!TODO_DB[@]}"; do
+    read u p h d <<< "${TODO_DB[$key]}"
+
+    # "set +e" / "set -e" : so_process_db renvoie un code 1 (non
+    # bloquant, juste informatif) quand rien n'est trouvé dans une
+    # base. On désactive temporairement "set -e" pour pouvoir
+    # récupérer ce code sans interrompre la boucle sur les autres
+    # bases.
+    set +e
+    so_process_db "search" "$VALUE" "$u" "$p" "$h" "$d" "${TODO_DOMAINS[$key]}"
+    rc=$?
+    set -e
+
+    # Condition : si so_process_db a trouvé au moins une occurrence
+    # (code retour 0), on ajoute cette base à la liste des bases à
+    # traiter réellement en cas de suppression.
+    if [ "$rc" -eq 0 ]; then
+        MATCHED_DB[$key]="${TODO_DB[$key]}"
+    fi
+done
+
+# --------------------------------------------------------------------
+# Condition : si le mode demandé est "search", tout a déjà été
+# affiché pendant la boucle ci-dessus : on s'arrête là.
+# --------------------------------------------------------------------
+if [ "$MODE" = "search" ]; then
+    echo "Terminé."
+    exit 0
+fi
+
+# --------------------------------------------------------------------
+# Condition : mode "delete" mais aucune base ne contient l'occurrence
+# recherchée -> on ne fait NI sauvegarde NI suppression nulle part.
+# --------------------------------------------------------------------
+if [ "${#MATCHED_DB[@]}" -eq 0 ]; then
+    echo "Aucune occurrence trouvée sur l'ensemble des bases : pas de sauvegarde, pas de suppression."
+    exit 0
+fi
+
+# ======================================================================
+# ÉTAPE 3 : au moins une base contient l'occurrence. On demande UNE
+# confirmation globale pour toutes les bases concernées, on ne
+# sauvegarde QUE ces bases-là, puis on supprime réellement.
+# ======================================================================
+echo "!!! ATTENTION !!!"
+echo "Vous allez SUPPRIMER définitivement toutes les lignes contenant :"
+echo "   \"$VALUE\""
+echo "dans les ${#MATCHED_DB[@]} base(s) suivante(s) (les seules concernées) :"
+for key in "${!MATCHED_DB[@]}"; do
+    read u p h d <<< "${MATCHED_DB[$key]}"
+    echo "   - $d"
+done
+echo
+read -p "Tapez OUI en majuscules pour confirmer la suppression : " rep
+
+# Condition : seule la réponse exacte "OUI" permet de continuer ;
+# sinon on annule tout avant même de faire une sauvegarde.
+if [ "$rep" != "OUI" ]; then
+    echo "Annulé."
+    exit 0
+fi
+echo
+
+# Boucle de sauvegarde : une sauvegarde mysqldump UNIQUEMENT pour les
+# bases où l'occurrence a été trouvée. "|| true" : si une sauvegarde
+# échoue, on continue quand même la boucle pour sauvegarder les
+# autres bases (l'échec est déjà signalé par so_backup_db elle-même).
+for key in "${!MATCHED_DB[@]}"; do
+    read u p h d <<< "${MATCHED_DB[$key]}"
+    so_backup_db "$u" "$p" "$h" "$d" "$BACKUP_DIR" || true
+done
+echo
+
+# Boucle de suppression effective : uniquement sur les bases
+# concernées, deuxième passage donc (recherche + suppression réelle
+# cette fois).
+for key in "${!MATCHED_DB[@]}"; do
+    read u p h d <<< "${MATCHED_DB[$key]}"
+    echo "==> Suppression en cours dans $d"
+    so_process_db "delete" "$VALUE" "$u" "$p" "$h" "$d" "${TODO_DOMAINS[$key]}"
+done
+
+echo "Terminé."

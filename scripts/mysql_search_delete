@@ -1,0 +1,256 @@
+#!/bin/bash
+##
+#############################################################
+##
+##  search_delete
+##
+##  Recherche (et supprime, en option) une occurrence dans toutes
+##  les colonnes texte de toutes les tables de la base MySQL du
+##  domaine courant.
+##
+##  A lancer depuis /var/www/vhosts/<domaine>/... comme pump.
+##
+##  Usage :
+##    search_delete search  <valeur>
+##    search_delete delete  <valeur>
+##
+##  Exemple :
+##    cd /var/www/vhosts/mondomaine.fr
+##    search_delete search it-support@akunlama.com
+##    search_delete delete it-support@akunlama.com
+##
+#############################################################
+
+set -euo pipefail
+
+# Dossier où seront stockées les sauvegardes avant suppression.
+# Peut être surchargé en définissant la variable d'environnement
+# BACKUP_DIR avant d'appeler le script.
+BACKUP_DIR="${BACKUP_DIR:-/var/backups/mysql_before_delete}"
+
+# --------------------------------------------------------------------
+# Condition : vérifie que le script a reçu exactement 2 arguments
+# (mode + valeur). Sinon on affiche l'usage et on quitte en erreur.
+# --------------------------------------------------------------------
+if [ $# -ne 2 ]; then
+    echo "Usage : $(basename "$0") search|delete <valeur>"
+    exit 1
+fi
+
+MODE="$1"
+VALUE="$2"
+
+# --------------------------------------------------------------------
+# Condition : le mode doit obligatoirement être "search" ou "delete".
+# Toute autre valeur est refusée pour éviter une faute de frappe qui
+# déclencherait accidentellement une suppression (ou l'inverse).
+# --------------------------------------------------------------------
+if [ "$MODE" != "search" ] && [ "$MODE" != "delete" ]; then
+    echo "Erreur : le mode doit être 'search' ou 'delete'."
+    exit 1
+fi
+
+# ======================================================================
+# MISE EN PLACE DU LOG
+# ======================================================================
+# Dossier où seront stockés les fichiers de log. Modifiable via
+# variable d'environnement LOG_DIR si besoin.
+LOG_DIR="${LOG_DIR:-/var/log/mysql_search_delete}"
+
+# Crée le dossier de log s'il n'existe pas déjà.
+mkdir -p "$LOG_DIR" 2>/dev/null
+
+# Condition : si la création du dossier échoue (droits insuffisants,
+# partition en lecture seule...), on prévient sur la sortie standard
+# d'erreur mais on NE bloque PAS le script pour autant : la recherche
+# ou la suppression reste plus importante que le log lui-même.
+if [ ! -d "$LOG_DIR" ]; then
+    echo "Attention : impossible de créer $LOG_DIR, le log ne sera pas écrit." >&2
+fi
+
+# Horodatage au format yyyymmdd_HHMMSS, utilisé dans le nom du fichier
+# de log pour que chaque exécution ait son propre fichier, sans jamais
+# écraser une exécution précédente.
+LOG_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
+
+# Nom du fichier : le suffixe (_search.log ou _delete.log) reprend
+# directement le mode demandé, comme spécifié.
+LOG_FILE="${LOG_DIR}/${LOG_TIMESTAMP}_${MODE}.log"
+
+# Redirection globale : à partir de cette ligne, tout ce qui est
+# affiché à l'écran (echo, sortie de mysql/mysqldump, messages
+# d'erreur redirigés en 2>&1) est A LA FOIS affiché normalement ET
+# ajouté au fichier de log, grâce à "tee -a".
+#   exec > >(tee -a "$LOG_FILE") 2>&1
+#   - "exec >" redirige en permanence la sortie standard du script
+#     (pas juste une seule commande) vers ce qui suit.
+#   - ">(tee -a "$LOG_FILE")" est une "process substitution" : tee
+#     reçoit tout ce qui est écrit, l'affiche sur le terminal (son
+#     comportement normal) ET l'ajoute (-a) au fichier de log.
+#   - "2>&1" redirige aussi les erreurs (stderr) vers la même
+#     destination, donc les messages d'erreur sont également loggués.
+if [ -d "$LOG_DIR" ]; then
+    exec > >(tee -a "$LOG_FILE") 2>&1
+    echo "=========================================================="
+    echo " Log de cette exécution : $LOG_FILE"
+    echo " Date/heure : $(date '+%Y-%m-%d %H:%M:%S')"
+    echo " Commande   : $(basename "$0") $MODE $VALUE"
+    echo "=========================================================="
+fi
+
+# Récupère le chemin courant (là où l'utilisateur a lancé le script).
+path=$(pwd)
+
+# --------------------------------------------------------------------
+# Condition : vérifie via une expression régulière que l'on se trouve
+# bien sous /var/www/vhosts/<quelque_chose>. Si ce n'est pas le cas,
+# le script ne peut pas déterminer de quel domaine il s'agit et
+# s'arrête pour éviter de travailler sur la mauvaise base.
+# --------------------------------------------------------------------
+if [[ ! "$path" =~ ^/var/www/vhosts/[^/]+(/.*)?$ ]]; then
+    echo "Erreur : vous n'êtes pas dans un domaine (/var/www/vhosts/<domaine>)."
+    exit 1
+fi
+
+# --------------------------------------------------------------------
+# Condition : si un dossier "httpdocs" existe à l'endroit où l'on se
+# trouve, on s'y déplace (c'est le docroot standard Plesk). Cela
+# reproduit exactement le comportement de pump.
+# --------------------------------------------------------------------
+if [ -d httpdocs ]; then
+    cd httpdocs
+fi
+
+# Charge les bibliothèques de fonctions existantes du serveur,
+# notamment get_instance_cms (déjà utilisée par pump).
+source "$CUSTOM_DIR/includes/clone_functions_utils.sh"
+source "$CUSTOM_DIR/includes/functions.sh"
+
+# Charge nos propres fonctions de recherche/suppression (so_run_mysql,
+# so_backup_db, so_process_db). On calcule le chemin absolu du script
+# courant pour être sûr de trouver "lib_search_delete" même si le
+# script est appelé depuis un autre dossier ou via un lien symbolique.
+# Condition : si le fichier est introuvable ou que le "source" échoue,
+# on arrête le script tout de suite avec un message clair (plutôt que
+# set -e ne s'en charge plus loin avec un "command not found" confus).
+LIB_PATH="$(dirname "$(readlink -f "$0")")/lib_search_delete"
+if [ ! -f "$LIB_PATH" ]; then
+    echo "Erreur : fichier lib introuvable : $LIB_PATH"
+    echo "Vérifiez qu'il est bien présent dans le même dossier que ce script."
+    exit 1
+fi
+source "$LIB_PATH"
+
+# Recalcule le chemin courant (après le éventuel "cd httpdocs").
+path=$(pwd)
+
+# Découpe le chemin par "/" et récupère les champs 5 et 6.
+# Exemple : /var/www/vhosts/mondomaine.fr/httpdocs
+#   champ1="" champ2="var" champ3="www" champ4="vhosts"
+#   champ5="mondomaine.fr" champ6="httpdocs"
+subscription=$(echo "$path" | cut -d'/' -f5)
+second=$(echo "$path" | cut -d'/' -f6)
+
+# --------------------------------------------------------------------
+# Condition : si le champ 6 vaut "httpdocs", cela veut dire qu'on est
+# bien dans le docroot standard, et le nom du domaine est le champ 5
+# (subscription). Sinon (cas de sous-domaines, alias...), le nom du
+# domaine réel est directement le champ 6.
+# --------------------------------------------------------------------
+if [ "$second" = "httpdocs" ]; then
+    folder_source="$subscription"
+else
+    folder_source="$second"
+fi
+
+echo "Domaine : $folder_source"
+
+# Appelle la fonction existante get_instance_cms (fournie par vos
+# propres includes) pour récupérer les identifiants MySQL associés à
+# ce domaine. "|| exit 1" : si la fonction échoue (ex: CMS non
+# reconnu), on arrête le script immédiatement.
+result="$(get_instance_cms "$folder_source")" || exit 1
+
+# Éclate le résultat (4 valeurs séparées par des espaces) dans les
+# 4 variables correspondantes.
+read cms_instance_source mysql_source_database mysql_source_user mysql_source_mdp <<< "$result"
+
+echo "Base        : $mysql_source_database"
+echo "Utilisateur : $mysql_source_user"
+echo "Mode        : $MODE"
+echo "Valeur      : $VALUE"
+echo
+
+# ======================================================================
+# PASSE 1 : recherche systématique, quel que soit le mode demandé.
+# Cela permet de savoir AVANT toute sauvegarde/suppression si
+# l'occurrence existe réellement dans cette base.
+#
+# "set +e" / "set -e" : le script a "set -e" activé en tête de fichier
+# (arrêt automatique à la moindre commande en échec). Or so_process_db
+# renvoie volontairement un code 1 quand rien n'est trouvé (ce n'est
+# pas une erreur, juste une information) : on désactive donc set -e
+# le temps de cet appel pour pouvoir récupérer ce code sans que le
+# script ne s'arrête tout seul.
+# --------------------------------------------------------------------
+set +e
+so_process_db "search" "$VALUE" "$mysql_source_user" "$mysql_source_mdp" "127.0.0.1" "$mysql_source_database" "$folder_source"
+found_rc=$?
+set -e
+
+# --------------------------------------------------------------------
+# Condition : si le mode demandé est "search", le travail est déjà
+# fait (affichage ci-dessus) : on s'arrête ici, pas de sauvegarde ni
+# de suppression à faire.
+# --------------------------------------------------------------------
+if [ "$MODE" = "search" ]; then
+    echo "Terminé."
+    exit 0
+fi
+
+# --------------------------------------------------------------------
+# Condition : mode "delete" mais rien n'a été trouvé lors de la passe
+# de recherche ($found_rc != 0) -> on ne fait NI sauvegarde NI
+# suppression, puisqu'il n'y a rien à supprimer.
+# --------------------------------------------------------------------
+if [ "$found_rc" -ne 0 ]; then
+    echo "Aucune occurrence trouvée : pas de sauvegarde, pas de suppression."
+    exit 0
+fi
+
+# ======================================================================
+# PASSE 2 : on arrive ici uniquement si des occurrences ont été
+# trouvées ET que le mode demandé est "delete". On sauvegarde, on
+# confirme, puis on supprime réellement.
+# ======================================================================
+echo "!!! ATTENTION !!!"
+echo "Vous allez SUPPRIMER définitivement toutes les lignes contenant :"
+echo "   \"$VALUE\""
+echo "dans la base : $mysql_source_database"
+echo
+
+# Sauvegarde automatique avant suppression. "|| true" : si la
+# sauvegarde échoue, on ne bloque pas le script ici (l'utilisateur
+# sera quand même prévenu par le message d'erreur de so_backup_db,
+# et pourra choisir de continuer ou d'annuler à l'étape suivante).
+so_backup_db "$mysql_source_user" "$mysql_source_mdp" "127.0.0.1" "$mysql_source_database" "$BACKUP_DIR" || true
+
+echo
+read -p "Tapez OUI en majuscules pour confirmer la suppression : " rep
+
+# Condition : seule la réponse exacte "OUI" (en majuscules) valide
+# la suppression ; toute autre réponse annule le script.
+case "$rep" in
+    OUI) ;;
+    *)
+        echo "Annulé."
+        exit 0
+        ;;
+esac
+
+# Suppression effective (deuxième passage sur la base, cette fois en
+# mode "delete" : so_process_db va réellement exécuter les DELETE).
+echo "==> Suppression en cours dans $mysql_source_database"
+so_process_db "delete" "$VALUE" "$mysql_source_user" "$mysql_source_mdp" "127.0.0.1" "$mysql_source_database" "$folder_source"
+
+echo "Terminé."

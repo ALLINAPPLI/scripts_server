@@ -31,6 +31,18 @@ remp     : Lancement du script de remplacement de valeurs dans la base de donné
 up       : Lancement du script civi-update.sh, pour la mise à jour des versions CiviCRM de l’instance souhaitée
 vcv      : Affichage de toutes les instances avec leur version de CiviCRM et PHP
 vcms     : Affichage de toutes les instances avec leur version de CMS et PHP
+mysql_search_delete : rechercher (et supprimer) une valeur dans une table entiere. 
+    Ici il faut se postionner sur le domaine
+    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
+    Usage :
+        search_delete search  <valeur>
+        search_delete delete  <valeur>
+mysql_search_delete_all : meme chose que mysql_search_delete mais sur toutes mysql le bdd du serveur
+    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
+    Usage :
+        mysql_search_delete_all search  <valeur>
+        mysql_search_delete_all delete  <valeur>
+
 
 === Manipulations de base de données ===
 dump     : Récupère l’intégralité de la base de données ; si aucune instruction complémentaire n’est donnée (ex : dump > dest.sql), l’affiche dans le terminal

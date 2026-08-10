@@ -1,0 +1,244 @@
+#!/bin/bash
+##
+#############################################################
+##
+##  lib_search_delete
+##
+##  Fonctions communes pour rechercher / supprimer une occurrence
+##  dans toutes les colonnes texte de toutes les tables d'une base
+##  MySQL donnée.
+##
+##  Ce fichier n'est PAS destiné à être exécuté directement : il est
+##  sourcé (`source lib_search_delete`) par les scripts "search_delete"
+##  et "search_delete_all".
+##
+##  Fonctions exposées :
+##    - so_run_mysql   user pass host db "SQL"      -> exécute une requête et renvoie le résultat brut
+##    - so_backup_db   user pass host db backup_dir -> sauvegarde (mysqldump) avant suppression
+##    - so_process_db  mode value user pass host db -> traite une base entière (recherche ou suppression)
+##
+#############################################################
+
+# --------------------------------------------------------------------
+# so_run_mysql : exécute une requête SQL sur une base donnée et
+# renvoie le résultat en mode "brut" (sans en-têtes de colonnes,
+# séparé par des tabulations). C'est la brique de base utilisée par
+# toutes les autres fonctions pour dialoguer avec MySQL.
+#
+# Paramètres :
+#   $1 = utilisateur MySQL
+#   $2 = mot de passe MySQL
+#   $3 = hôte MySQL (ex: 127.0.0.1)
+#   $4 = nom de la base (peut être vide si la requête ne cible pas
+#        une base précise, ex: SHOW DATABASES)
+#   $5 = requête SQL à exécuter
+# --------------------------------------------------------------------
+so_run_mysql() {
+    local user="$1" pass="$2" host="$3" db="$4" sql="$5"
+
+    # Construction du tableau d'options communes à mysql.
+    local opts=(-h "$host" -u "$user")
+
+    # Condition : on n'ajoute l'option -p que si un mot de passe est
+    # fourni, pour éviter de passer "-p" vide (ce qui ferait demander
+    # le mot de passe de façon interactive).
+    if [ -n "$pass" ]; then
+        opts+=(-p"$pass")
+    fi
+
+    # Condition : si un nom de base est fourni, on l'ajoute à la
+    # commande pour exécuter la requête dans le contexte de cette
+    # base ; sinon on exécute la requête sans base par défaut
+    # (utile pour SHOW DATABASES, ou pour interroger
+    # information_schema qui n'a pas besoin de USE).
+    if [ -n "$db" ]; then
+        mysql "${opts[@]}" -N -B "$db" -e "$sql" 2>/dev/null
+    else
+        mysql "${opts[@]}" -N -B -e "$sql" 2>/dev/null
+    fi
+}
+
+# --------------------------------------------------------------------
+# so_backup_db : fait une sauvegarde complète (mysqldump) d'une base
+# avant toute suppression, dans un fichier horodaté. Retourne 1 (échec)
+# si mysqldump est absent ou si la sauvegarde échoue, pour permettre
+# à l'appelant de décider s'il continue ou non.
+#
+# Paramètres :
+#   $1 = utilisateur MySQL
+#   $2 = mot de passe MySQL
+#   $3 = hôte MySQL
+#   $4 = nom de la base à sauvegarder
+#   $5 = dossier de destination des sauvegardes
+# --------------------------------------------------------------------
+so_backup_db() {
+    local user="$1" pass="$2" host="$3" db="$4" backup_dir="$5"
+
+    # Condition : si l'outil mysqldump n'est pas installé sur le
+    # serveur, on prévient et on sort en échec plutôt que de planter
+    # plus loin avec une erreur "commande introuvable".
+    if ! command -v mysqldump >/dev/null 2>&1; then
+        echo "   mysqldump introuvable : pas de sauvegarde automatique." >&2
+        return 1
+    fi
+
+    # Crée le dossier de sauvegarde s'il n'existe pas encore.
+    mkdir -p "$backup_dir" 2>/dev/null
+
+    # Nom de fichier unique : base + date/heure, pour ne jamais
+    # écraser une sauvegarde précédente.
+    local backup_file="${backup_dir}/${db}_$(date +%Y%m%d_%H%M%S).sql"
+
+    local opts=(-h "$host" -u "$user")
+    if [ -n "$pass" ]; then
+        opts+=(-p"$pass")
+    fi
+
+    echo "   Sauvegarde de $db -> $backup_file"
+
+    # Condition : on teste directement le résultat de mysqldump.
+    # Si la commande réussit (code retour 0), la sauvegarde est bonne.
+    # Sinon, on prévient l'utilisateur (droits insuffisants, base
+    # inexistante, disque plein, etc.).
+    if mysqldump "${opts[@]}" "$db" > "$backup_file" 2>/dev/null; then
+        echo "   OK"
+        return 0
+    else
+        echo "   ECHEC de la sauvegarde (droits/chemin ?)."
+        return 1
+    fi
+}
+
+# --------------------------------------------------------------------
+# so_process_db : cœur du script. Parcourt toutes les colonnes de
+# type texte de toutes les tables d'une base, cherche l'occurrence
+# demandée, et la supprime si le mode "delete" est actif.
+#
+# Paramètres :
+#   $1 = mode ("search" ou "delete")
+#   $2 = valeur recherchée (ex: une adresse email)
+#   $3 = utilisateur MySQL
+#   $4 = mot de passe MySQL
+#   $5 = hôte MySQL
+#   $6 = nom de la base à traiter
+#   $7 = (optionnel) nom du/des domaine(s) associé(s), pour affichage
+#        uniquement. Si omis, seul le nom de la base est affiché.
+# --------------------------------------------------------------------
+so_process_db() {
+    local mode="$1" value="$2" user="$3" pass="$4" host="$5" db="$6"
+    # "${7:-}" : récupère le 7e paramètre s'il existe, sinon une
+    # chaîne vide (évite une erreur "unbound variable" avec set -u
+    # si l'appelant ne fournit pas de domaine).
+    local domaine="${7:-}"
+
+    # Échappe les apostrophes de la valeur recherchée pour éviter de
+    # casser la syntaxe SQL (ex: si l'email contenait un caractère
+    # spécial). Chaque ' devient '' (syntaxe d'échappement SQL).
+    local escaped_value
+    escaped_value=$(printf '%s' "$value" | sed "s/'/''/g")
+
+    # Condition : si un domaine a été fourni, on l'affiche à côté du
+    # nom de la base pour se repérer plus facilement (utile surtout
+    # dans search_delete_all, qui traite plusieurs domaines à la
+    # suite). Sinon, on affiche juste le nom de la base comme avant.
+    if [ -n "$domaine" ]; then
+        echo "---- Base : $db / Domaine : $domaine ----"
+    else
+        echo "---- Base : $db ----"
+    fi
+
+    # Requête sur information_schema.COLUMNS : c'est le "catalogue"
+    # interne de MySQL qui liste toutes les tables et colonnes de
+    # toutes les bases. On filtre ici sur la base ciblée et sur les
+    # types de colonnes susceptibles de contenir du texte (varchar,
+    # text, json, etc.) : chercher un email dans une colonne INT ou
+    # DATE n'a pas de sens.
+    local cols
+    cols=$(so_run_mysql "$user" "$pass" "$host" "" "
+        SELECT TABLE_NAME, COLUMN_NAME
+        FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = '${db}'
+          AND DATA_TYPE IN ('char','varchar','text','tinytext','mediumtext','longtext','enum','set','json')
+        ORDER BY TABLE_NAME, COLUMN_NAME;
+    ")
+
+    # Condition : si la requête ne renvoie rien, soit la base n'a
+    # aucune colonne texte, soit l'utilisateur MySQL n'a pas les
+    # droits pour lire information_schema pour cette base. On arrête
+    # le traitement de cette base ici.
+    #
+    # IMPORTANT : on renvoie explicitement 1 ("rien trouvé"). Un
+    # simple "return" sans code hériterait du code de retour de la
+    # commande précédente (ici "echo", qui réussit toujours et donc
+    # renvoie 0). Or 0 signifie "occurrence trouvée" dans notre
+    # convention : sans ce "1" explicite, une base vide ou
+    # inaccessible serait à tort considérée comme contenant
+    # l'occurrence, et se retrouverait donc traitée dans la phase de
+    # sauvegarde/suppression alors qu'il n'y a rien à y supprimer.
+    if [ -z "$cols" ]; then
+        echo "   (aucune colonne texte trouvée, ou accès refusé)"
+        return 1
+    fi
+
+    # Compteur pour savoir, à la fin de la boucle, si on a trouvé au
+    # moins une occurrence dans au moins une colonne (sert juste à
+    # afficher un message récapitulatif).
+    local found_any=0
+
+    # Boucle principale : on parcourt chaque ligne "table<TAB>colonne"
+    # renvoyée par la requête précédente. IFS=$'\t' sépare la ligne
+    # sur la tabulation pour remplir les variables table/column.
+    # Le "<<< "$cols"" envoie le contenu de $cols comme entrée du
+    # while, ligne par ligne.
+    while IFS=$'\t' read -r table column; do
+
+        # Condition de garde : ignore les lignes vides (peut arriver
+        # en fin de flux). Sans cette vérification, une itération
+        # "fantôme" pourrait générer une requête SQL invalide.
+        [ -z "$table" ] && continue
+
+        # Pour chaque colonne, on compte combien de lignes contiennent
+        # la valeur recherchée (recherche non sensible à la casse par
+        # défaut avec LIKE en collation MySQL standard).
+        local count
+        count=$(so_run_mysql "$user" "$pass" "$host" "$db" "
+            SELECT COUNT(*) FROM \`${table}\`
+            WHERE \`${column}\` LIKE '%${escaped_value}%';
+        ")
+
+        # Condition : on ne fait quelque chose que si $count est bien
+        # un nombre (la requête a réussi) ET que ce nombre est > 0
+        # (l'occurrence existe réellement dans cette colonne).
+        if [[ "$count" =~ ^[0-9]+$ ]] && [ "$count" -gt 0 ]; then
+            found_any=1
+            echo "   [$db.$table.$column] -> $count ligne(s) trouvée(s)"
+
+            # Condition : seulement en mode "delete" on exécute
+            # réellement la suppression. En mode "search", on se
+            # contente d'afficher le nombre de lignes trouvées.
+            if [ "$mode" = "delete" ]; then
+                so_run_mysql "$user" "$pass" "$host" "$db" "
+                    DELETE FROM \`${table}\`
+                    WHERE \`${column}\` LIKE '%${escaped_value}%';
+                " >/dev/null
+                echo "     -> $count ligne(s) supprimée(s) de $db.$table"
+            fi
+        fi
+    done <<< "$cols"
+
+    # Condition finale : si aucune colonne n'a matché sur toute la
+    # boucle, on l'indique explicitement à l'utilisateur.
+    if [ "$found_any" -eq 0 ]; then
+        echo "   (aucune occurrence trouvée)"
+    fi
+    echo
+
+    # Code de retour : 0 si au moins une occurrence a été trouvée
+    # (utile à l'appelant pour décider s'il doit sauvegarder/supprimer
+    # cette base), 1 si rien n'a été trouvé.
+    if [ "$found_any" -eq 1 ]; then
+        return 0
+    else
+        return 1
+    fi
+}
