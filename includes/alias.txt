@@ -31,17 +31,6 @@ remp     : Lancement du script de remplacement de valeurs dans la base de donné
 up       : Lancement du script civi-update.sh, pour la mise à jour des versions CiviCRM de l’instance souhaitée
 vcv      : Affichage de toutes les instances avec leur version de CiviCRM et PHP
 vcms     : Affichage de toutes les instances avec leur version de CMS et PHP
-mysql_search_delete : rechercher (et supprimer) une valeur dans une table entiere. 
-    Ici il faut se postionner sur le domaine
-    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
-    Usage :
-        search_delete search  <valeur>
-        search_delete delete  <valeur>
-mysql_search_delete_all : meme chose que mysql_search_delete mais sur toutes mysql le bdd du serveur
-    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
-    Usage :
-        mysql_search_delete_all search  <valeur>
-        mysql_search_delete_all delete  <valeur>
 
 
 === Manipulations de base de données ===
@@ -51,7 +40,14 @@ getbdd   : Récupèrer les identifiants de la base de données de l’instance c
 repbdd   : Réparer une base de données (surtout pour vérifier les chaines sérialisées)
 sql      : Ouvre le terminal SQL de l’instance courante, peut être utilisé sous la forme `sql < fichier.sql`
 vidage   : Vider (purger) la base de données MySQL d'un site hébergé. 
-
+sqlsd    : rechercher (et supprimer) une valeur dans une table entiere. 
+    Ici il faut se postionner sur le domaine
+    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
+    Usage :
+        sqlsd -s <valeur>       (recherche uniquement)
+        sqlsd -d <valeur>       (recherche, puis suppression si trouvé)
+sqlsdall : meme chose que mysql_search_delete mais sur toutes mysql le bdd du serveur
+    Si c'est delete il fait un backup de la bdd avant dans /var/backups/mysql_before_delete
 
 === Lister les extensions CiviCRM ===
 list     : Lister toutes les extensions présentes

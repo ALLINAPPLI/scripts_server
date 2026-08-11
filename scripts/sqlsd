@@ -2,7 +2,7 @@
 ##
 #############################################################
 ##
-##  search_delete
+##  sqlsd
 ##
 ##  Recherche (et supprime, en option) une occurrence dans toutes
 ##  les colonnes texte de toutes les tables de la base MySQL du
@@ -11,43 +11,95 @@
 ##  A lancer depuis /var/www/vhosts/<domaine>/... comme pump.
 ##
 ##  Usage :
-##    search_delete search  <valeur>
-##    search_delete delete  <valeur>
+##    sqlsd -s <valeur>       (recherche uniquement)
+##    sqlsd -d <valeur>       (recherche, puis suppression si trouvé)
+##    sqlsd -sd <valeur>      (équivalent à -d : -d inclut déjà la
+##                              recherche, combiner les deux options
+##                              ne change rien de plus)
+##
+##  Les options sont cumulables (getopts) : -s -d, -sd, -ds sont
+##  toutes des écritures valides et équivalentes.
 ##
 ##  Exemple :
 ##    cd /var/www/vhosts/mondomaine.fr
-##    search_delete search it-support@akunlama.com
-##    search_delete delete it-support@akunlama.com
+##    sqlsd -s it-support@akunlama.com
+##    sqlsd -d it-support@akunlama.com
 ##
 #############################################################
 
 set -euo pipefail
 
 # Dossier où seront stockées les sauvegardes avant suppression.
-# Peut être surchargé en définissant la variable d'environnement
-# BACKUP_DIR avant d'appeler le script.
 BACKUP_DIR="${BACKUP_DIR:-/var/backups/mysql_before_delete}"
 
 # --------------------------------------------------------------------
-# Condition : vérifie que le script a reçu exactement 2 arguments
-# (mode + valeur). Sinon on affiche l'usage et on quitte en erreur.
+# Fonction d'aide : affiche l'usage. Appelée depuis plusieurs endroits
+# en cas d'erreur d'arguments, pour ne pas dupliquer le message.
 # --------------------------------------------------------------------
-if [ $# -ne 2 ]; then
-    echo "Usage : $(basename "$0") search|delete <valeur>"
+usage() {
+    echo "Usage : $(basename "$0") -s|-d [-s -d ensemble aussi possible] <valeur>"
+    echo "  -s  recherche l'occurrence (search)"
+    echo "  -d  recherche puis supprime si trouvé (delete)"
+}
+
+# Variables qui indiquent si chaque option a été demandée. Vides par
+# défaut (non demandées).
+DO_SEARCH=""
+DO_DELETE=""
+
+# --------------------------------------------------------------------
+# Boucle getopts : lit les options courtes une par une (elle gère
+# nativement les formes cumulées comme "-sd" aussi bien que "-s -d"
+# séparées). "s" et "d" ne prennent pas d'argument (pas de ":" après
+# la lettre dans la chaîne "sd").
+# --------------------------------------------------------------------
+while getopts "sd" opt; do
+    case "$opt" in
+        # Condition : option -s rencontrée -> on active la recherche.
+        s) DO_SEARCH=1 ;;
+        # Condition : option -d rencontrée -> on active la suppression.
+        d) DO_DELETE=1 ;;
+        # Condition : toute autre option (inconnue) déclenche l'usage
+        # et l'arrêt du script.
+        *) usage; exit 1 ;;
+    esac
+done
+# Décale les arguments positionnels pour ne garder que ce qui suit
+# les options (ici : la valeur recherchée).
+shift $((OPTIND - 1))
+
+VALUE="${1:-}"
+
+# --------------------------------------------------------------------
+# Condition : au moins une des deux options (-s ou -d) doit avoir été
+# fournie. Sans ça, on ne sait pas quoi faire.
+# --------------------------------------------------------------------
+if [ -z "$DO_SEARCH" ] && [ -z "$DO_DELETE" ]; then
+    echo "Erreur : précisez au moins -s ou -d."
+    usage
     exit 1
 fi
 
-MODE="$1"
-VALUE="$2"
+# --------------------------------------------------------------------
+# Condition : la valeur à rechercher est obligatoire.
+# --------------------------------------------------------------------
+if [ -z "$VALUE" ]; then
+    echo "Erreur : valeur à rechercher manquante."
+    usage
+    exit 1
+fi
 
 # --------------------------------------------------------------------
-# Condition : le mode doit obligatoirement être "search" ou "delete".
-# Toute autre valeur est refusée pour éviter une faute de frappe qui
-# déclencherait accidentellement une suppression (ou l'inverse).
+# Traduction des options en mode interne. -d (avec ou sans -s) donne
+# le mode "delete", qui inclut déjà une recherche complète avant toute
+# suppression (voir PASSE 1 plus bas). -s seul donne le mode "search".
+# C'est ce $MODE qui est utilisé pour le nom du fichier de log et pour
+# la logique interne, exactement comme avant.
 # --------------------------------------------------------------------
-if [ "$MODE" != "search" ] && [ "$MODE" != "delete" ]; then
-    echo "Erreur : le mode doit être 'search' ou 'delete'."
-    exit 1
+if [ -n "$DO_DELETE" ]; then
+    MODE="delete"
+else
+    MODE="search"
 fi
 
 # ======================================================================
@@ -74,27 +126,19 @@ fi
 LOG_TIMESTAMP=$(date +%Y%m%d_%H%M%S)
 
 # Nom du fichier : le suffixe (_search.log ou _delete.log) reprend
-# directement le mode demandé, comme spécifié.
+# directement le mode demandé.
 LOG_FILE="${LOG_DIR}/${LOG_TIMESTAMP}_${MODE}.log"
 
 # Redirection globale : à partir de cette ligne, tout ce qui est
 # affiché à l'écran (echo, sortie de mysql/mysqldump, messages
 # d'erreur redirigés en 2>&1) est A LA FOIS affiché normalement ET
 # ajouté au fichier de log, grâce à "tee -a".
-#   exec > >(tee -a "$LOG_FILE") 2>&1
-#   - "exec >" redirige en permanence la sortie standard du script
-#     (pas juste une seule commande) vers ce qui suit.
-#   - ">(tee -a "$LOG_FILE")" est une "process substitution" : tee
-#     reçoit tout ce qui est écrit, l'affiche sur le terminal (son
-#     comportement normal) ET l'ajoute (-a) au fichier de log.
-#   - "2>&1" redirige aussi les erreurs (stderr) vers la même
-#     destination, donc les messages d'erreur sont également loggués.
 if [ -d "$LOG_DIR" ]; then
     exec > >(tee -a "$LOG_FILE") 2>&1
     echo "=========================================================="
     echo " Log de cette exécution : $LOG_FILE"
     echo " Date/heure : $(date '+%Y-%m-%d %H:%M:%S')"
-    echo " Commande   : $(basename "$0") $MODE $VALUE"
+    echo " Commande   : $(basename "$0") -s${DO_SEARCH:+ }${DO_DELETE:+-d} $VALUE"
     echo "=========================================================="
 fi
 
@@ -131,8 +175,7 @@ source "$CUSTOM_DIR/includes/functions.sh"
 # courant pour être sûr de trouver "lib_search_delete" même si le
 # script est appelé depuis un autre dossier ou via un lien symbolique.
 # Condition : si le fichier est introuvable ou que le "source" échoue,
-# on arrête le script tout de suite avec un message clair (plutôt que
-# set -e ne s'en charge plus loin avec un "command not found" confus).
+# on arrête le script tout de suite avec un message clair.
 LIB_PATH="$(dirname "$(readlink -f "$0")")/lib_search_delete"
 if [ ! -f "$LIB_PATH" ]; then
     echo "Erreur : fichier lib introuvable : $LIB_PATH"
@@ -199,9 +242,9 @@ found_rc=$?
 set -e
 
 # --------------------------------------------------------------------
-# Condition : si le mode demandé est "search", le travail est déjà
-# fait (affichage ci-dessus) : on s'arrête ici, pas de sauvegarde ni
-# de suppression à faire.
+# Condition : si l'option -d n'a pas été demandée (mode "search"
+# uniquement), le travail est déjà fait (affichage ci-dessus) : on
+# s'arrête ici, pas de sauvegarde ni de suppression à faire.
 # --------------------------------------------------------------------
 if [ "$MODE" = "search" ]; then
     echo "Terminé."
@@ -220,7 +263,7 @@ fi
 
 # ======================================================================
 # PASSE 2 : on arrive ici uniquement si des occurrences ont été
-# trouvées ET que le mode demandé est "delete". On sauvegarde, on
+# trouvées ET que l'option -d a été demandée. On sauvegarde, on
 # confirme, puis on supprime réellement.
 # ======================================================================
 echo "!!! ATTENTION !!!"
