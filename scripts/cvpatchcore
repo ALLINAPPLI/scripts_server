@@ -60,6 +60,18 @@ version_ge() {
 }
 
 #############################################################
+##  Compare deux versions "x.y.z" et renvoie 0 (vrai) si
+##  v1 <= v2, 1 (faux) sinon.
+#############################################################
+version_le() {
+    local v1="$1" v2="$2"
+    [[ -z "$v1" || "$v1" == "---" ]] && return 1
+    local cmp
+    cmp=$(version_cmp "$v1" "$v2")
+    [[ "$cmp" -le 0 ]]
+}
+
+#############################################################
 ##  Compare deux versions et renvoie :
 ##   1  si v1 > v2
 ##   0  si v1 == v2
@@ -280,12 +292,12 @@ main() {
     log "    Version minimale : ${YELLOW}${min_ver:-N/A}${NC}"
     log "    Version maximale : ${YELLOW}${max_ver:-N/A}${NC}"
 
-    # -------- 3. Version minimale demandée à l'utilisateur (défaut : all) --------
+    # -------- 3. Version minimale (et maximale) demandées à l'utilisateur (défaut : all) --------
     echo ""
     read -rp "À partir de quelle version de CiviCRM voulez-vous appliquer le patch (ex: 5.65.0), ou tapez 'all' pour toutes les instances [all] : " version_input
     version_input="${version_input:-all}"
 
-    local seuil
+    local seuil seuil_max="9999.9999.9999"
     if [[ "$version_input" =~ ^(tous|all)$ ]]; then
         seuil="0.0.0"
         log "${YELLOW}➡️  Option choisie : TOUTES les instances CiviCRM seront ciblées.${NC}"
@@ -295,7 +307,23 @@ main() {
             exit 1
         fi
         seuil="$version_input"
-        log "${YELLOW}➡️  Seuil choisi : les instances avec CiviCRM >= $seuil seront ciblées.${NC}"
+
+        # Demande de la version maximale (optionnelle)
+        read -rp "Jusqu'à quelle version de CiviCRM voulez-vous appliquer le patch (ex: 5.70.0), ou laissez vide pour ne pas fixer de maximum : " version_input_max
+        if [[ -n "$version_input_max" ]]; then
+            if [[ ! "$version_input_max" =~ ^[0-9]+(\.[0-9]+)*$ ]]; then
+                log "${RED}❌ Format de version invalide : $version_input_max${NC}"
+                exit 1
+            fi
+            if [[ $(version_cmp "$version_input_max" "$seuil") -lt 0 ]]; then
+                log "${RED}❌ La version maximum ($version_input_max) est inférieure à la version minimum ($seuil).${NC}"
+                exit 1
+            fi
+            seuil_max="$version_input_max"
+            log "${YELLOW}➡️  Plage choisie : les instances avec CiviCRM >= $seuil et <= $seuil_max seront ciblées.${NC}"
+        else
+            log "${YELLOW}➡️  Seuil choisi : les instances avec CiviCRM >= $seuil (pas de maximum) seront ciblées.${NC}"
+        fi
     fi
 
     # -------- 4. Emplacement du patch --------
@@ -313,7 +341,7 @@ main() {
     local targets=()
     while IFS='|' read -r instance cms civi_version core_path; do
         [[ "$civi_version" == "---" || "$core_path" == "---" ]] && continue
-        if version_ge "$civi_version" "$seuil"; then
+        if version_ge "$civi_version" "$seuil" && version_le "$civi_version" "$seuil_max"; then
             targets+=("$instance|$cms|$civi_version|$core_path")
             log "    - $instance ($cms, CiviCRM $civi_version) — core: $core_path"
         fi
