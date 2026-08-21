@@ -164,8 +164,11 @@ info "CMS      : ${BOLD}${CMS}${RESET}"
 
 # ============================================================
 #  WORDPRESS
-#  Fichier one-shot → wp-content/uploads/
-#  Lien             → siteurl/wp-content/uploads/uli_KEY.php?t=TOKEN
+#  Handler installé UNE FOIS comme mu-plugin (wp-content/mu-plugins/)
+#  → exécuté via le bootstrap normal de WordPress (index.php),
+#    donc jamais bloqué par les règles nginx qui interdisent
+#    l'exécution de PHP dans wp-content/uploads/.
+#  Lien → siteurl/?uli_k=KEY&uli_t=TOKEN
 # ============================================================
 wp_autologin() {
   local wp_cli
@@ -204,61 +207,84 @@ wp_autologin() {
     $WP user get "$LOGIN" &>/dev/null || die "Utilisateur '$LOGIN' introuvable"
   fi
 
-  # Génère le token
+  # ------------------------------------------------------------
+  # Installe (une seule fois, idempotent) le mu-plugin handler.
+  # Un mu-plugin est toujours chargé par WP au bootstrap normal,
+  # donc jamais concerné par un blocage nginx sur uploads/*.php
+  # ------------------------------------------------------------
+  local MU_DIR="$DOCROOT/wp-content/mu-plugins"
+  local MU_FILE="$MU_DIR/uli-autologin.php"
+
+  mkdir -p "$MU_DIR"
+
+  if [[ ! -f "$MU_FILE" ]]; then
+cat > "$MU_FILE" <<'PHPEOF'
+<?php
+/**
+ * uli — handler de connexion automatique (mu-plugin)
+ * Écoute ?uli_k=KEY&uli_t=TOKEN sur une requête WP normale
+ * (index.php), donc jamais bloqué par une règle nginx qui
+ * interdirait l'exécution de PHP dans wp-content/uploads/.
+ * Token à usage unique, stocké dans wp_options le temps du login.
+ */
+add_action('init', function () {
+    if (!isset($_GET['uli_k'], $_GET['uli_t'])) {
+        return;
+    }
+
+    $key = preg_replace('/[^a-f0-9]/', '', (string) $_GET['uli_k']);
+    if ($key === '') {
+        return;
+    }
+
+    $option_key = 'uli_' . $key;
+    $stored     = get_option($option_key);
+
+    if (!$stored) {
+        status_header(403);
+        die('Token expiré ou invalide');
+    }
+
+    // Supprime immédiatement : usage unique, même si la suite échoue
+    delete_option($option_key);
+
+    list($login, $token, $expire) = array_pad(explode('|', $stored), 3, '');
+
+    if (!hash_equals((string) $token, (string) $_GET['uli_t'])) {
+        status_header(403);
+        die('Token invalide');
+    }
+
+    if (time() > (int) $expire) {
+        status_header(403);
+        die('Token expiré');
+    }
+
+    $user = get_user_by('login', $login);
+    if (!$user) {
+        status_header(404);
+        die('Utilisateur introuvable');
+    }
+
+    wp_set_auth_cookie($user->ID, false);
+    wp_safe_redirect(admin_url());
+    exit;
+});
+PHPEOF
+    chmod 644 "$MU_FILE"
+    info "Handler mu-plugin installé : ${BOLD}wp-content/mu-plugins/uli-autologin.php${RESET}"
+  fi
+
+  # Génère le token (usage unique, 5 minutes)
   local KEY TOKEN
   KEY=$(openssl rand -hex 20)
   TOKEN=$(openssl rand -hex 20)
-  local EXPIRE=$(( $(date +%s) + 300 ))   # 5 minutes
+  local EXPIRE=$(( $(date +%s) + 300 ))
 
-  # Stocke dans les options WP
   $WP option add "uli_${KEY}" "${LOGIN}|${TOKEN}|${EXPIRE}" &>/dev/null || \
   $WP option update "uli_${KEY}" "${LOGIN}|${TOKEN}|${EXPIRE}" &>/dev/null
 
-  # Dossier uploads (PHP exécutable ici sur Plesk, pas de restriction)
-  local UPLOADS_DIR="$DOCROOT/wp-content/uploads"
-  [[ -d "$UPLOADS_DIR" ]] || die "Dossier wp-content/uploads introuvable : $UPLOADS_DIR"
-
-  local HOOK_FILE="$UPLOADS_DIR/uli_${KEY}.php"
-
-  # wp-load.php est à la racine du docroot, soit 3 niveaux au-dessus de uploads/
-  # uploads/ → wp-content/ → docroot/  donc dirname 2 fois depuis uploads
-cat > "$HOOK_FILE" <<PHPEOF
-<?php
-// Fichier auto-généré par uli — s'auto-détruit après usage
-// wp-load.php est 2 niveaux au-dessus (uploads → wp-content → docroot)
-\$wp_load = dirname(__DIR__, 2) . '/wp-load.php';
-if (!file_exists(\$wp_load)) { http_response_code(500); die('wp-load not found'); }
-require_once \$wp_load;
-
-\$option_key = 'uli_${KEY}';
-\$stored     = get_option(\$option_key);
-if (!\$stored) { http_response_code(403); die('Token expiré ou invalide'); }
-
-list(\$login, \$token, \$expire) = explode('|', \$stored);
-if ((\$_GET['t'] ?? '') !== \$token) { http_response_code(403); die('Token invalide'); }
-if (time() > (int)\$expire) {
-  delete_option(\$option_key);
-  @unlink(__FILE__);
-  http_response_code(403);
-  die('Token expiré');
-}
-
-// Usage unique : supprime token et fichier
-delete_option(\$option_key);
-@unlink(__FILE__);
-
-\$user = get_user_by('login', \$login);
-if (!\$user) { http_response_code(404); die('Utilisateur introuvable'); }
-
-wp_set_auth_cookie(\$user->ID, false);
-wp_redirect(admin_url());
-exit;
-PHPEOF
-
-  chmod 644 "$HOOK_FILE"
-
-  # URL finale : siteurl/wp-content/uploads/uli_KEY.php?t=TOKEN
-  local URL="${SITE_URL}/wp-content/uploads/uli_${KEY}.php?t=${TOKEN}"
+  local URL="${SITE_URL}/?uli_k=${KEY}&uli_t=${TOKEN}"
 
   echo ""
   ok "Lien de connexion WP (valide ${BOLD}5 minutes${RESET}, usage unique) :"
