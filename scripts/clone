@@ -152,7 +152,8 @@ modify_value_within_files()
             majValeursCivicrm_Wordpress;
         fi
 
-        if [ "$cms_instance_source" == "drupal" ]; then
+        # équivalent a if [[ "$cms_instance_source" == "drupal" || "$cms_instance_source" == "drupal10+" ]]; then
+        if [[ "$cms_instance_source" == "drupal"* ]]; then
             majValeurs_Drupal 
             majValeursCivicrm_Drupal
         fi

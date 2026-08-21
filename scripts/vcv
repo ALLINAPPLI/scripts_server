@@ -37,46 +37,50 @@ process_site() {
     local instance="$1"
     local out_file="$tmp_folder/$instance.txt"
 
-    local root_folder
-    root_folder=$(get_site_root "$instance" 2>/dev/null)
-    real_root_folder="$(realpath "$racine/$root_folder" 2>/dev/null || echo "")"
+    local real_root_folder cms_instance config_dir
+    real_root_folder=$(resolve_site_root "$instance")
 
-    if [[ -z "$real_root_folder" || ! -d "$real_root_folder" ]]; then
+    if [[ -z "$real_root_folder" ]]; then
         printf "%s|%s|%s|%s|%s|%s\n" "$instance" "N/A" "---" "---" "---" "---" > "$out_file"
         return
     fi
 
     cd "$real_root_folder" || return
 
+    read -r cms_instance config_dir <<< "$(detect_cms 2>/dev/null)"
+
     local cms cms_ver civi_version="---"
-    if [[ -f "wp-config.php" ]]; then
-        cms="wordpress"
-        cms_ver=$(wp core version --allow-root 2>/dev/null || "---")
-        [[ -f "wp-content/uploads/civicrm/civicrm.settings.php" ]] && \
-        civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
-
-    elif [[ -f "web/sites/default/settings.php" ]]; then
-        cms="drupal10+"
-        cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
-        [[ -f "web/sites/default/civicrm.settings.php" ]] && \
-        civi_version=$(cv status 2>/dev/null | awk -F'|' '/^[[:space:]]*\| civicrm[[:space:]]*\|/ {gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3; exit}'); civi_version=${civi_version:-"---"}
-
-    elif [[ -f "sites/default/settings.php" ]]; then
-        cms="drupal"
-        cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
-        [[ -f "sites/default/civicrm.settings.php" ]] && \
-        civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
-
-    elif [[ -f "private/civicrm.settings.php" ]]; then
-        cms="standalone"
-        cms_ver=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
-        civi_version=$cms_ver
-
-    elif [[ -f "settings.php" ]]; then
-        cms="backdrop"; cms_ver="---"
-    else
-        cms="N/A"; cms_ver="---"
-    fi
+    case "$cms_instance" in
+        wordpress)
+            cms="wordpress"
+            cms_ver=$(wp core version --allow-root 2>/dev/null || "---")
+            [[ -f "wp-content/uploads/civicrm/civicrm.settings.php" ]] && \
+            civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+            ;;
+        drupal10+)
+            cms="drupal10+"
+            cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+            [[ -f "$config_dir/civicrm.settings.php" ]] && \
+            civi_version=$(cv status 2>/dev/null | awk -F'|' '/^[[:space:]]*\| civicrm[[:space:]]*\|/ {gsub(/^[ \t]+|[ \t]+$/, "", $3); print $3; exit}'); civi_version=${civi_version:-"---"}
+            ;;
+        drupal)
+            cms="drupal"
+            cms_ver=$(cv status --out=shell 2>/dev/null | grep "drupal_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+            [[ -f "$config_dir/civicrm.settings.php" ]] && \
+            civi_version=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+            ;;
+        standalone)
+            cms="standalone"
+            cms_ver=$(cv status --out=shell 2>/dev/null | grep "civicrm_value" | cut -d"'" -f2 | cut -d" " -f1 || "---")
+            civi_version=$cms_ver
+            ;;
+        backdrop)
+            cms="backdrop"; cms_ver="---"
+            ;;
+        *)
+            cms="N/A"; cms_ver="---"
+            ;;
+    esac
 
     local php_version="---" php_color="$NC"
     [[ $(id -u) -eq 0 ]] && php_version=$(plesk bin site --show-php-settings "$instance" 2>/dev/null \
@@ -87,17 +91,13 @@ process_site() {
     smarty_version=$(cv php:eval 'echo CRM_Core_Smarty::singleton()->getVersion();' 2>/dev/null | tr -d '\n' || "---")
     [[ "$smarty_version" == "2"* ]] && smarty_color="$RED"
 
-    # Padding appliqué avant couleur
     local php_padded smarty_padded
     php_padded=$(printf "%-7s" "$php_version")
     smarty_padded=$(printf "%-7s" "$smarty_version")
     php_padded="${php_color}${php_padded}${NC}"
     smarty_padded="${smarty_color}${smarty_padded}${NC}"
 
-    # Ligne brute pour tri
     printf "%s|%s|%s|%s|%s|%s\n" "$cms" "$instance" "$cms_ver" "$civi_version" "$php_version" "$smarty_version" > "$out_file"
-
-    # Ligne colorée finale
     printf "%s|%s|%s|%s|%s|%s\n" "$cms" "$instance" "$cms_ver" "$civi_version" "$php_padded" "$smarty_padded" > "$out_file.colored"
 }
 

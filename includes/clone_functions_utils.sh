@@ -60,64 +60,128 @@ set_bdd_in_instance() {
     mysql --user="$2" --password="$3" "$1" < "$4"   
 }
 
+# get_instance_cms ()
+# {
+#     if [ $# -lt 1 ]; then
+#         echo -e "${RED}[ ERREUR ]${NC} Vous devez donner une instance en parametre" >&2;
+#         exit 1
+#     fi
+#     local cms_instance=''
+#     local mysql_database=''
+#     local mysql_user=''
+
+#     cd $racine
+# 	local root_domain=$(get_site_root $1)
+# 	cd "$root_domain"
+
+#     test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2;
+#     test -e web/sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
+#     test -e private/civicrm.settings.php && cms_instance="standalone" && echo "Standalone installation" >&2;
+#     test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
+
+
+#     case "$cms_instance" in
+#         wordpress) {
+#             mysql_database=`grep -oP "(?<=DB_NAME', ').*(?=')" wp-config.php`;
+#             mysql_user=`grep -oP "(?<=DB_USER', ').*(?=')" wp-config.php`;
+#             mysql_mdp=`grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php`;
+#         };;
+#         drupal) {
+#             cd web/sites/default/;
+#             mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#             mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#             mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#        };;
+#         standalone){
+#             cd private/
+#             line=$(cat civicrm.settings.php | grep "define('CIVICRM_DSN', 'mysql" | tail -n 1)
+#             [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
+#                 mysql_user="${BASH_REMATCH[1]}" && \
+#                 mysql_mdp="${BASH_REMATCH[2]}" && \
+#                 mysql_database="${BASH_REMATCH[4]}"
+#         };;
+#         backdrop){
+#         	url=$(cat settings.php | grep "mysql://")
+#         	if [ $? = 0 ]; then
+#         		url=$(echo "$url" | sed -E "s/.*'([^']+)'.*/\1/")
+#         		mysql_user=$(echo "$url" | sed -E 's#mysql://([^:]+):.*@\S+/.*#\1#')
+#         		mysql_mdp=$(echo "$url" | sed -E 's#mysql://[^:]+:([^@]+)@\S+/.*#\1#')
+#         		mysql_database=$(echo "$url" | sed -E 's#.*/([^/?]+).*#\1#')
+#         	else
+#         		mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#   		        mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#         		mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
+#         	fi
+#         };;
+#         *)
+#             echo -e "No CMS ! sur ${RED}$1${NC} est il vide ?" >&2;
+#             return 1
+#         ;;
+#     esac
+#     echo "$cms_instance" "$mysql_database" "$mysql_user" "$mysql_mdp"
+#     return 0
+# }
+
 get_instance_cms ()
 {
     if [ $# -lt 1 ]; then
-        echo -e "${RED}[ ERREUR ]${NC} Vous devez donner une instance en parametre" >&2;
+        echo -e "${RED}[ ERREUR ]${NC} Vous devez donner une instance en parametre" >&2
         exit 1
     fi
-    local cms_instance=''
-    local mysql_database=''
-    local mysql_user=''
 
-    cd $racine
-	local root_domain=$(get_site_root $1)
-	cd "$root_domain"
+    local instance="$1"
+    local mysql_database='' mysql_user='' mysql_mdp=''
+    local real_root_folder cms_instance config_dir
 
-    test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2;
-    test -e web/sites/default/settings.php && cms_instance="drupal" && echo "Drupal installation" >&2;
-    test -e private/civicrm.settings.php && cms_instance="standalone" && echo "Standalone installation" >&2;
-    test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
+    real_root_folder=$(resolve_site_root "$instance") || {
+        echo -e "${RED}[ ERREUR ]${NC} Racine introuvable pour ${RED}$instance${NC}" >&2
+        return 1
+    }
+    cd "$real_root_folder" || return 1
 
+    read -r cms_instance config_dir <<< "$(detect_cms)"
+    if [[ -z "$cms_instance" ]]; then
+        echo -e "No CMS ! sur ${RED}$instance${NC} est il vide ?" >&2
+        return 1
+    fi
+
+    [[ -n "$config_dir" ]] && cd "$config_dir"
 
     case "$cms_instance" in
-        wordpress) {
-            mysql_database=`grep -oP "(?<=DB_NAME', ').*(?=')" wp-config.php`;
-            mysql_user=`grep -oP "(?<=DB_USER', ').*(?=')" wp-config.php`;
-            mysql_mdp=`grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php`;
-        };;
-        drupal) {
-            cd web/sites/default/;
-            mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-            mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-            mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-       };;
-        standalone){
-            cd private/
-            line=$(cat civicrm.settings.php | grep "define('CIVICRM_DSN', 'mysql" | tail -n 1)
+        wordpress)
+            mysql_database=$(grep -oP "(?<=DB_NAME', ').*(?=')" wp-config.php)
+            mysql_user=$(grep -oP "(?<=DB_USER', ').*(?=')" wp-config.php)
+            mysql_mdp=$(grep -oP "(?<=DB_PASSWORD', ').*(?=')" wp-config.php)
+            ;;
+        drupal10+|drupal)
+            mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+            mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+            mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+            ;;
+        standalone)
+            local line
+            line=$(grep "define('CIVICRM_DSN', 'mysql" civicrm.settings.php | tail -n 1)
             [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
                 mysql_user="${BASH_REMATCH[1]}" && \
                 mysql_mdp="${BASH_REMATCH[2]}" && \
                 mysql_database="${BASH_REMATCH[4]}"
-        };;
-        backdrop){
-        	url=$(cat settings.php | grep "mysql://")
-        	if [ $? = 0 ]; then
-        		url=$(echo "$url" | sed -E "s/.*'([^']+)'.*/\1/")
-        		mysql_user=$(echo "$url" | sed -E 's#mysql://([^:]+):.*@\S+/.*#\1#')
-        		mysql_mdp=$(echo "$url" | sed -E 's#mysql://[^:]+:([^@]+)@\S+/.*#\1#')
-        		mysql_database=$(echo "$url" | sed -E 's#.*/([^/?]+).*#\1#')
-        	else
-        		mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-  		        mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-        		mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1);
-        	fi
-        };;
-        *)
-            echo -e "No CMS ! sur ${RED}$1${NC} est il vide ?" >&2;
-            return 1
-        ;;
+            ;;
+        backdrop)
+            local url
+            url=$(grep "mysql://" settings.php)
+            if [ -n "$url" ]; then
+                url=$(echo "$url" | sed -E "s/.*'([^']+)'.*/\1/")
+                mysql_user=$(echo "$url" | sed -E 's#mysql://([^:]+):.*@\S+/.*#\1#')
+                mysql_mdp=$(echo "$url" | sed -E 's#mysql://[^:]+:([^@]+)@\S+/.*#\1#')
+                mysql_database=$(echo "$url" | sed -E 's#.*/([^/?]+).*#\1#')
+            else
+                mysql_database=$(sed -n "s/^[[:space:]]*'database' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+                mysql_user=$(sed -n "s/^[[:space:]]*'username' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+                mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1)
+            fi
+            ;;
     esac
+
     echo "$cms_instance" "$mysql_database" "$mysql_user" "$mysql_mdp"
     return 0
 }
