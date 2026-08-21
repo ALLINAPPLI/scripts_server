@@ -1116,3 +1116,47 @@ get_civi_version() {
     cd "$OLDPWD" 2>/dev/null || true
     echo "$civi_version"   # Ce echo sert de "return" pour $(get_civi_version ...)
 }
+
+resolve_site_root ()
+{
+    if [ $# -lt 1 ]; then
+        echo -e "${RED}[ ERREUR ]${NC} resolve_site_root: instance manquante" >&2
+        return 1
+    fi
+
+    local instance="$1"
+    local root_folder real_root_folder
+
+    root_folder=$(get_site_root "$instance" 2>/dev/null)
+    real_root_folder="$(realpath "$racine/$root_folder" 2>/dev/null || echo "")"
+
+    if [[ -z "$real_root_folder" || ! -d "$real_root_folder" ]]; then
+        return 1
+    fi
+
+    echo "$real_root_folder"
+    return 0
+}
+
+# A appeler depuis la racine du site (apres cd).
+# Renvoie sur stdout : "<cms_instance> <config_dir>"
+#   cms_instance : wordpress | drupal10+ | drupal | standalone | backdrop
+#   config_dir   : sous-dossier relatif contenant le fichier de config (vide si racine)
+detect_cms ()
+{
+    local config_dir=''
+    local cms_instance=''
+
+    test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2
+    test -e web/sites/default/settings.php && cms_instance="drupal10+" && config_dir="web/sites/default" && echo "Drupal 10+ installation" >&2
+    test -e sites/default/settings.php && cms_instance="drupal" && config_dir="sites/default" && echo "Drupal installation" >&2
+    test -e private/civicrm.settings.php && cms_instance="standalone" && config_dir="private" && echo "Standalone installation" >&2
+    test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
+
+    if [[ -z "$cms_instance" ]]; then
+        return 1
+    fi
+
+    echo "$cms_instance" "$config_dir"
+    return 0
+}
