@@ -20,6 +20,14 @@ function cvallup() {
 	# echo "cvallup"
 	
 	test -d httpdocs && cd httpdocs
+	local cms_type=$(get_cms_type)
+	read -r cms_type cms_config_dir <<< "$(detect_cms)"
+
+	local level_flag=""
+	if [[ "$cms_type" == "wordpress" ]]; then
+		level_flag="--level=full"
+	fi
+	
 	extensions=$(cv ext:list --local --columns=key --statuses=installed --upgrade=available 2> /dev/null \
         | grep '|' \
         | awk '{print $2}' \
@@ -27,8 +35,8 @@ function cvallup() {
         | grep -v '^+$')
 
 	for ele in $extensions; do
-		cv ext:download "$ele" --force
-		cv ext:enable "$ele"
+		cv ext:download "$ele" --force $level_flag
+		cv ext:enable "$ele" $level_flag
 	done
 
 	# echo "cvallup > Call cvup"

@@ -1014,6 +1014,10 @@ set_maintenance_mode() {
     cd "$current_pwd"
 }
 
+function get_cms_type() {
+	cv php:eval 'echo CIVICRM_UF;' 2>/dev/null
+}
+
 # Obtenir le site racine.
 get_site_root() {
 	local current_pwd=$(pwd)
@@ -1147,11 +1151,25 @@ detect_cms ()
     local config_dir=''
     local cms_instance=''
 
-    test -e wp-config.php && cms_instance="wordpress" && echo "Wordpress installation" >&2
-    test -e web/sites/default/settings.php && cms_instance="drupal10+" && config_dir="web/sites/default" && echo "Drupal 10+ installation" >&2
-    test -e sites/default/settings.php && cms_instance="drupal" && config_dir="sites/default" && echo "Drupal installation" >&2
-    test -e private/civicrm.settings.php && cms_instance="standalone" && config_dir="private" && echo "Standalone installation" >&2
-    test -e settings.php && cms_instance="backdrop" && echo "Backdrop installation" >&2
+    if [[ -e wp-config.php ]]; then
+        cms_instance="wordpress"
+        echo "Wordpress installation" >&2
+    elif [[ -e web/sites/default/settings.php ]]; then
+        cms_instance="drupal10+"
+        config_dir="web/sites/default"
+        echo "Drupal 10+ installation" >&2
+    elif [[ -e sites/default/settings.php ]]; then
+        cms_instance="drupal"
+        config_dir="sites/default"
+        echo "Drupal installation" >&2
+    elif [[ -e private/civicrm.settings.php ]]; then
+        cms_instance="standalone"
+        config_dir="private"
+        echo "Standalone installation" >&2
+    elif [[ -e settings.php ]]; then
+        cms_instance="backdrop"
+        echo "Backdrop installation" >&2
+    fi
 
     if [[ -z "$cms_instance" ]]; then
         return 1
