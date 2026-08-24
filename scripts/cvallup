@@ -7,6 +7,7 @@
 ##  Met à jour toutes les extensions de CiviCRM
 ##
 #############################################################
+source $CUSTOM_DIR/includes/functions.sh
 
 shopt -s expand_aliases 						# "bash, active les alias s'il te plaît"
 source "$CUSTOM_DIR/sources/alias_source.sh"	# charge les alias
