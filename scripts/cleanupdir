@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+##
+## Développé par Antoine Breheret
+##
+#################################################################################
+#
+# cleanupdir
+#
+# Supprime récursivement les fichiers d'un dossier (et sous-dossiers)
+# plus vieux qu'une durée donnée, avec filtre optionnel par extension(s).
+#
+# Usage :
+#   ./cleanupdir /chemin/du/dossier 7d
+#   ./cleanupdir /chemin/du/dossier 12h
+#   ./cleanupdir /chemin/du/dossier 3m
+#   ./cleanupdir /chemin/du/dossier 30min
+#   ./cleanupdir /chemin/du/dossier 7d pdf
+#   ./cleanupdir /chemin/du/dossier 7d pdf,sql,xls
+#
+# Unités de durée acceptées :
+#   min = minutes | h = heures | d = jours | m = mois (~30 jours)
+#
+# Le filtre d'extension fonctionne par préfixe (insensible à la casse) :
+#   - "xls" supprime aussi les .xlsx et .xlsm
+#   - "doc" supprime aussi les .docx
+#   - "pdf" supprime uniquement les .pdf
+#
+# Options :
+#   DRY_RUN=1        -> simulation, rien n'est supprimé
+#   DELETE_EMPTY=1   -> supprime aussi les dossiers vides restants après nettoyage
+# 
+# Log :
+#  Toutes les actions sont journalisées dans /var/log/cleanupdir.log
+#####################################################################################
+
+set -euo pipefail
+ 
+SCRIPT_NAME="$(basename "$0")"
+ 
+afficher_aide() {
+    cat <<EOF
+Usage : $SCRIPT_NAME <dossier> <durée: Nmin|Nh|Nd|Nm> [extensions séparées par virgule]
+ 
+Description :
+  Supprime récursivement les fichiers d'un dossier (et sous-dossiers)
+  plus vieux qu'une durée donnée. Un filtre optionnel par extension(s)
+  peut être appliqué.
+ 
+Arguments :
+  dossier         Chemin du dossier à nettoyer (obligatoire)
+  durée           Ancienneté minimale des fichiers à supprimer (défaut : 7d)
+  extensions      Liste d'extensions séparées par des virgules (optionnel)
+ 
+Unités de durée acceptées :
+  min = minutes | h = heures | d = jours | m = mois (~30 jours)
+ 
+Filtre d'extension :
+  Le matching se fait par préfixe, insensible à la casse :
+    - "xls" supprime aussi les .xlsx et .xlsm
+    - "doc" supprime aussi les .docx
+    - "pdf" supprime uniquement les .pdf
+ 
+Options (variables d'environnement) :
+  DRY_RUN=1        Simulation, rien n'est supprimé (affiche ce qui le serait)
+  DELETE_EMPTY=1   Supprime aussi les dossiers vides restants après nettoyage
+ 
+Exemples :
+  $SCRIPT_NAME /var/data 7d
+  $SCRIPT_NAME /var/data 12h
+  $SCRIPT_NAME /var/data 3m
+  $SCRIPT_NAME /var/data 30min
+  $SCRIPT_NAME /var/data 7d pdf
+  $SCRIPT_NAME /var/data 7d pdf,sql,xls
+  DRY_RUN=1 $SCRIPT_NAME /var/data 7d pdf,sql,xls
+  DELETE_EMPTY=1 $SCRIPT_NAME /var/data 7d
+ 
+Log :
+  Toutes les actions sont journalisées dans /var/log/cleanupdir.log
+EOF
+}
+ 
+# Gestion de -h / --help (peut être passé en 1er argument, avant ou sans les autres)
+for arg in "$@"; do
+    if [[ "$arg" == "-h" || "$arg" == "--help" ]]; then
+        afficher_aide
+        exit 0
+    fi
+done
+ 
+DOSSIER="${1:-}"
+DUREE="${2:-7d}"
+EXTENSIONS="${3:-}"
+LOGFILE="/var/log/cleanupdir.log"
+DRY_RUN="${DRY_RUN:-0}"
+DELETE_EMPTY="${DELETE_EMPTY:-0}"
+ 
+if [[ -z "$DOSSIER" ]]; then
+    echo "Erreur : dossier manquant." >&2
+    echo "Usage: $SCRIPT_NAME <dossier> <durée: Nmin|Nh|Nd|Nm> [extensions séparées par virgule]" >&2
+    echo "Utilisez '$SCRIPT_NAME --help' pour plus de détails." >&2
+    exit 1
+fi
+ 
+if [[ ! -d "$DOSSIER" ]]; then
+    echo "Erreur : le dossier '$DOSSIER' n'existe pas." >&2
+    exit 1
+fi
+ 
+if [[ "$DUREE" =~ ^([0-9]+)(min|h|d|m)$ ]]; then
+    NOMBRE="${BASH_REMATCH[1]}"
+    UNITE="${BASH_REMATCH[2]}"
+else
+    echo "Erreur : format de durée invalide ('$DUREE'). Exemples valides : 30min, 12h, 7d, 3m" >&2
+    echo "Utilisez '$SCRIPT_NAME --help' pour plus de détails." >&2
+    exit 1
+fi
+ 
+case "$UNITE" in
+    min) MINUTES=$NOMBRE ;;
+    h)   MINUTES=$(( NOMBRE * 60 )) ;;
+    d)   MINUTES=$(( NOMBRE * 60 * 24 )) ;;
+    m)   MINUTES=$(( NOMBRE * 60 * 24 * 30 )) ;;
+esac
+ 
+# Construction du filtre d'extension pour find, si fourni
+FIND_EXT_ARGS=()
+if [[ -n "$EXTENSIONS" ]]; then
+    IFS=',' read -ra EXT_LIST <<< "$EXTENSIONS"
+ 
+    # Validation : uniquement lettres/chiffres, pas de caractères dangereux
+    for ext in "${EXT_LIST[@]}"; do
+        ext="$(echo "$ext" | xargs)" # trim espaces
+        if [[ ! "$ext" =~ ^[A-Za-z0-9]+$ ]]; then
+            echo "Erreur : extension invalide '$ext'. Utilisez uniquement lettres/chiffres." >&2
+            exit 1
+        fi
+    done
+ 
+    FIND_EXT_ARGS+=( "(" )
+    for i in "${!EXT_LIST[@]}"; do
+        ext="$(echo "${EXT_LIST[$i]}" | xargs)"
+        if [[ "$i" -gt 0 ]]; then
+            FIND_EXT_ARGS+=( "-o" )
+        fi
+        # Matching par préfixe insensible à la casse : xls -> xls, xlsx, xlsm...
+        FIND_EXT_ARGS+=( "-iname" "*.${ext}*" )
+    done
+    FIND_EXT_ARGS+=( ")" )
+fi
+ 
+TIMESTAMP="$(date '+%Y-%m-%d %H:%M:%S')"
+ 
+if [[ -n "$EXTENSIONS" ]]; then
+    echo "[$TIMESTAMP] Nettoyage récursif de '$DOSSIER' (fichiers > $DUREE, soit $MINUTES min, extensions: $EXTENSIONS)" >> "$LOGFILE"
+else
+    echo "[$TIMESTAMP] Nettoyage récursif de '$DOSSIER' (fichiers > $DUREE, soit $MINUTES min, toutes extensions)" >> "$LOGFILE"
+fi
+ 
+if [[ "$DRY_RUN" == "1" ]]; then
+    # Simulation : liste tous les fichiers concernés
+    find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
+else
+    # Suppression réelle des fichiers, récursive
+    find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
+ 
+    # Suppression optionnelle des dossiers vides restants
+    if [[ "$DELETE_EMPTY" == "1" ]]; then
+        find "$DOSSIER" -mindepth 1 -type d -empty -print -delete >> "$LOGFILE" 2>&1
+    fi
+fi
+ 
+echo "[$TIMESTAMP] Nettoyage terminé." >> "$LOGFILE"
