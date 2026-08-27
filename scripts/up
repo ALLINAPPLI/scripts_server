@@ -130,5 +130,11 @@ unset_maintenance_mode $instance $cms_instance
 echo " " ; echo -e ">> Mise à jour de la base de données en cours..."
 yes | cv updb > /dev/null ; cv flush > /dev/null
 echo -e ">> Plesk repair ..." && rep
+
+# Repositionnement dans le httpdocs de l'instance et génération du lien de connexion admin
+cd $racine/$civi_folder
+echo -e ">> Génération du lien de connexion admin..."
+uli admin
+
 echo -e "${BLUE}>> Opération terminée 🚀${NC}"
 echo " "
