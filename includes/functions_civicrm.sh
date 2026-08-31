@@ -7,6 +7,12 @@
 source $CUSTOM_DIR/includes/functions.sh
 source $CUSTOM_DIR/sources/utils.sh
 
+# Détecte si l'installation CiviCRM du site (drupal10+) est pilotée par Composer.
+_civicrmIsComposerManaged(){
+    local site_path="$1"
+    [[ -f "$site_path/composer.json" ]] && grep -Eq '"civicrm/civicrm-(core|drupal-8)"' "$site_path/composer.json" 2>/dev/null
+}
+
 # Localise le vrai composer.phar (et non un wrapper shell qui pourrait être
 # trouvé par erreur via "command -v composer"). Sous Plesk, le phar officiel
 # est toujours à cet emplacement fixe.
@@ -21,40 +27,17 @@ _civicrmComposerPharPath(){
     # Repli : si jamais ce n'est pas du Plesk, on cherche un composer.phar
     # accessible dans le PATH (mais PAS un wrapper shell comme /usr/bin/composer,
     # qui casserait l'exécution si on l'appelle via "$php_bin $composer_bin")
-    local fallback
-    fallback=$(command -v composer.phar 2>/dev/null)
-    echo "$fallback"
+    command -v composer.phar 2>/dev/null
 }
 
-# Détecte si l'installation CiviCRM du site (drupal10+) est pilotée par Composer.
-_civicrmIsComposerManaged(){
-    local site_path="$1"
-    [[ -f "$site_path/composer.json" ]] && grep -Eq '"civicrm/civicrm-(core|drupal-8)"' "$site_path/composer.json" 2>/dev/null
-}
-
-# Détermine le binaire PHP à utiliser pour Composer, en fonction de la contrainte
-# "php" déclarée dans le composer.json du site (ex: "8.2.*"), en cherchant le
-# binaire Plesk correspondant (/opt/plesk/php/<version>/bin/php).
-# Repli sur le "php" du shell si rien de trouvé.
+# Détermine le binaire PHP à utiliser pour Composer. On utilise le "php" par
+# défaut du shell (celui pointé par le handler Plesk actif), plutôt que de
+# chercher à faire correspondre exactement la contrainte "php" du
+# composer.json : ce serveur ne dispose pas forcément de la version exacte
+# demandée (ex: 8.2 absent), on contourne cette contrainte via
+# --ignore-platform-req=php lors des appels Composer.
 _civicrmComposerPhpBinary(){
-    local site_path="$1"
-    local required major_minor candidate
-
-    # Extrait la version PHP requise depuis le composer.json (ex: "8.2.*")
-    required=$(grep -oP '"php"\s*:\s*"\K[^"]+' "$site_path/composer.json" | head -n1)
-    major_minor=$(echo "$required" | grep -oP '[0-9]+\.[0-9]+' | head -n1)
-
-    if [[ -n "$major_minor" ]]; then
-        candidate="/opt/plesk/php/$major_minor/bin/php"
-        if [[ -x "$candidate" ]]; then
-            echo "$candidate"
-            return
-        fi
-    fi
-
-    # Repli : binaire PHP par défaut du shell (peut ne pas correspondre
-    # à la version exigée par le site, à surveiller dans les logs)
-    echo "php"
+    command -v php
 }
 
 # Réactive le blocage Composer des paquets vulnérables (policy.advisories.block).
@@ -64,7 +47,6 @@ _civicrmComposerPhpBinary(){
 _civicrmRestoreComposerPolicy(){
     local php_bin="$1" composer_bin="$2"
 
-    # Garde-fou : évite une double exécution (appel explicite + trap EXIT)
     if [[ "${_civicrm_composer_policy_restored:-0}" == "1" ]]; then
         return
     fi
@@ -88,10 +70,13 @@ _updateCivicrmComposer(){
         exit 1
     fi
 
-    # On détermine quel binaire PHP utiliser pour que Composer respecte
-    # la contrainte "php" déclarée dans le composer.json du site
-    php_bin=$(_civicrmComposerPhpBinary "$site_path")
+    php_bin=$(_civicrmComposerPhpBinary)
     composer_bin=$(_civicrmComposerPharPath)
+
+    if [[ -z "$php_bin" ]]; then
+        echo -e "${RED}[ ERREUR ]${NC} Aucun binaire PHP trouvé dans le PATH"
+        exit 1
+    fi
 
     if [[ -z "$composer_bin" || ! -f "$composer_bin" ]]; then
         echo -e "${RED}[ ERREUR ]${NC} composer.phar introuvable (ni sous Plesk, ni dans le PATH)"
@@ -100,6 +85,7 @@ _updateCivicrmComposer(){
 
     echo -e ">> Installation Composer détectée, montée de version vers ${GREEN}${civi_version}${NC} ..."
     echo -e ">> Binaire PHP utilisé : ${PURPLE}${php_bin}${NC}"
+    echo -e ">> composer.phar utilisé : ${PURPLE}${composer_bin}${NC}"
     cd "$site_path" || exit 1
 
     # Le script s'exécute en root : Composer désactive les plugins par sécurité
@@ -107,67 +93,68 @@ _updateCivicrmComposer(){
     export COMPOSER_ALLOW_SUPERUSER=1
 
     # --- Filet de sécurité : réactivation garantie de policy.advisories.block ---
-    # Le trap se déclenche sur EXIT (fin normale ou "exit" ailleurs dans le script),
-    # INT (Ctrl+C) et TERM (kill), pour ne JAMAIS laisser le site sans cette
-    # protection, même si le script est interrompu en plein milieu de l'opération.
-    # NB : ne protège pas contre un "kill -9" (SIGKILL), qui ne peut pas être
-    # intercepté par bash — limite technique inévitable.
-    # Les valeurs sont volontairement interpolées avec des guillemets doubles
-    # pour figer $php_bin/$composer_bin dès maintenant (ce sont des variables
-    # "local", elles n'existeraient plus si le trap se déclenchait plus tard
-    # hors de cette fonction).
+    # Se déclenche sur EXIT (fin normale ou "exit" ailleurs), INT (Ctrl+C) et
+    # TERM (kill), pour ne JAMAIS laisser le site sans cette protection.
+    # NB : ne protège pas contre un "kill -9" (SIGKILL), limite technique
+    # inévitable en bash.
     _civicrm_composer_policy_restored=0
     trap "_civicrmRestoreComposerPolicy \"$php_bin\" \"$composer_bin\"" EXIT INT TERM
 
     # --- Désactivation TEMPORAIRE du blocage des paquets affectés par une CVE ---
-    # Sans ça, Composer refuse de résoudre les dépendances dès qu'un paquet
-    # verrouillé (ex: symfony/polyfill-intl-idn via drupal/core-recommended)
-    # est marqué comme vulnérable, même si on ne cherche pas à le mettre à jour.
     echo -e ">> ${PURPLE}[ SECURITE ]${NC} Désactivation temporaire du blocage Composer des paquets vulnérables (policy.advisories.block) le temps de la mise à jour de CiviCRM ..."
     "$php_bin" "$composer_bin" config policy.advisories.block false --no-interaction
 
     # --- Tentative n°1 : mise à jour ciblée sur CiviCRM UNIQUEMENT ---
-    # Volontairement SANS --with-all-dependencies : on ne veut pas toucher
-    # à Drupal core ni aux autres modules pour limiter les risques de conflit.
+    # --ignore-platform-req=php : ce serveur ne dispose pas forcément de la
+    # version PHP exacte déclarée dans le composer.json du site (ex: 8.2.*
+    # alors que seuls 8.0/8.3/8.4/8.5 sont installés) ; on ignore cette
+    # contrainte plutôt que de bloquer la mise à jour dessus.
     echo -e ">> Tentative de mise à jour ciblée sur CiviCRM uniquement (sans toucher aux autres paquets) ..."
     "$php_bin" "$composer_bin" require \
         "civicrm/civicrm-core:$civi_version" \
         "civicrm/civicrm-drupal-8:$civi_version" \
         "civicrm/civicrm-packages:$civi_version" \
+        --ignore-platform-req=php \
         --no-interaction
     composer_status=$?
 
-    # --- Si ça échoue : c'est probablement parce que d'autres paquets ---
-    # --- verrouillés (Drupal core, modules contrib...) bloquent la résolution ---
     if [[ $composer_status -ne 0 ]]; then
         echo -e '\e[93m=======================================\033[0m'
         echo -e "${RED}[ ATTENTION ]${NC} La mise à jour ciblée de CiviCRM seul a échoué."
         echo "Cela signifie probablement que d'autres dépendances verrouillées (Drupal core, modules contrib, etc.) doivent aussi être mises à jour pour résoudre les conflits."
+        echo "Vérifie aussi qu'un token GitHub est configuré (composer config -g github-oauth.github.com ...) si l'erreur mentionne l'authentification GitHub."
         echo -e '\e[93m=======================================\033[0m'
 
         read -p "Voulez-vous autoriser la mise à jour de TOUS les paquets Drupal verrouillés pour débloquer la situation ? (o/N) " confirm_full_update
 
         if [[ "$confirm_full_update" =~ ^[oOyY]$ ]]; then
-            # --- Tentative n°2 : on élargit la mise à jour à toutes les dépendances verrouillées ---
             echo -e ">> Nouvelle tentative avec mise à jour complète des dépendances verrouillées (--with-all-dependencies) ..."
             "$php_bin" "$composer_bin" require \
                 "civicrm/civicrm-core:$civi_version" \
                 "civicrm/civicrm-drupal-8:$civi_version" \
                 "civicrm/civicrm-packages:$civi_version" \
-                --with-all-dependencies --no-interaction
+                --with-all-dependencies \
+                --ignore-platform-req=php \
+                --no-interaction
             composer_status=$?
         else
             echo -e ">> Mise à jour annulée par l'utilisateur : aucun paquet Drupal ne sera modifié."
         fi
+
+        # --- FILET DE SÉCURITÉ ---
+        # Composer a pu supprimer physiquement des paquets patchés (ex: via
+        # cweagans/composer-patches) avant d'échouer, sans les avoir
+        # réinstallés. Le "revert" ne restaure que composer.json/lock, PAS
+        # vendor/. On force donc une resynchronisation pour ne jamais laisser
+        # le site cassé.
+        if [[ $composer_status -ne 0 ]]; then
+            echo -e ">> ${PURPLE}[ SECURITE ]${NC} Resynchronisation de vendor/ avec composer.lock (composer install) pour éviter de laisser le site dans un état cassé ..."
+            "$php_bin" "$composer_bin" install --ignore-platform-req=php --no-interaction
+        fi
     fi
 
     # --- Réactivation explicite du blocage de sécurité (chemin normal) ---
-    # Le trap ci-dessus servira uniquement de filet de secours si jamais
-    # on n'atteint pas cette ligne (interruption du script).
     _civicrmRestoreComposerPolicy "$php_bin" "$composer_bin"
-
-    # On désarme le trap : la protection a déjà été restaurée normalement,
-    # inutile de le laisser actif pour le reste de l'exécution du script "up"
     trap - EXIT INT TERM
 
     if [[ $composer_status -ne 0 ]]; then
