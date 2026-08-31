@@ -11,12 +11,6 @@
 shopt -s expand_aliases
 ################################################################
 
-# Security check
-# if [ ! -f ~/.bashrc ]; then
-#     printf -- '\033[41m  .bashrc must exist. abord. \033[0m\n'
-#     exit 1
-# fi
-
 vhosts="$racine"
 
 source $CUSTOM_DIR/includes/functions_civicrm.sh
@@ -31,107 +25,152 @@ select instance in "${listSite[@]}"; do break; done
 echo -e '\e[93m=============================================\033[0m'
 echo -e "L'instance cible choisie est : ${GREEN}$instance${NC}"
 civi_folder=$(get_site_root $instance)
+site_root="$vhosts/$civi_folder"
 
-test -e $vhosts/$civi_folder/sites/default/settings.php && cms_instance="drupal"
-test -e $vhosts/$civi_folder/private/civicrm.settings.php && cms_instance="standalone"
-test -e $vhosts/$civi_folder/wp-config.php && cms_instance="wordpress"
-test -e $vhosts/$civi_folder/settings.php && cms_instance="backdrop"
+## --- Détection du CMS ---------------------------------------------------
+cms_instance=""
+config_dir=""
 
-chemin_plugins_drupal="$vhosts/$civi_folder/sites/all/modules"  
-chemin_plugins_wordpress="$vhosts/$civi_folder/wp-content/plugins"  
-chemin_plugins_standalone="$vhosts/$civi_folder"   
-chemin_plugins_backdrop="$vhosts/$civi_folder/modules"
+if [[ -e "$site_root/wp-config.php" ]]; then
+    cms_instance="wordpress"
+    echo "Installation Wordpress détectée" >&2
+elif [[ -e "$site_root/web/sites/default/settings.php" ]]; then
+    cms_instance="drupal10+"
+    config_dir="web/sites/default"
+    echo "Installation Drupal 10+ détectée" >&2
+elif [[ -e "$site_root/sites/default/settings.php" ]]; then
+    cms_instance="drupal"
+    config_dir="sites/default"
+    echo "Installation Drupal détectée" >&2
+elif [[ -e "$site_root/private/civicrm.settings.php" ]]; then
+    cms_instance="standalone"
+    config_dir="private"
+    echo "Installation Standalone détectée" >&2
+elif [[ -e "$site_root/settings.php" ]]; then
+    cms_instance="backdrop"
+    echo "Installation Backdrop détectée" >&2
+fi
 
-if [ ! -e $chemin_plugins_wordpress ] && [ ! -e $chemin_plugins_drupal ] && [ ! -e $chemin_plugins_standalone ]; then
-    echo -e '\e[93m=======================================\033[0m' 
-    echo -e "${RED}[ ERREUR ]${NC} Aucun CMS valide sélectionné"
-    echo -e '\e[93m=======================================\033[0m'   
+if [[ -z "$cms_instance" ]]; then
+    echo -e '\e[93m=======================================\033[0m'
+    echo -e "${RED}[ ERREUR ]${NC} Aucun CMS valide détecté"
+    echo -e '\e[93m=======================================\033[0m'
     exit 1
 fi
 
-# Affectation de variables pour affichage de version de CiviCRM
-versionCIVI_WP=$(grep "define('CIVICRM_PLUGIN_VERSION'" $chemin_plugins_wordpress/civicrm/civicrm.php 2>/dev/null | awk -F"'" '{print $4}')
-versionCIVI_DRUPAL=$(grep '<version_no>' $chemin_plugins_drupal/civicrm/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
-versionCIVI_STANDALONE=$(grep '<version_no>' $chemin_plugins_standalone/core/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
-versionCIVI_BACKDROP=$(grep '<version_no>' $chemin_plugins_backdrop/civicrm/xml/version.xml 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+## --- Chemins plugins + version CiviCRM selon le CMS ---------------------
+case "$cms_instance" in
+    wordpress)
+        chemin_plugins="$site_root/wp-content/plugins"
+        version_file="$chemin_plugins/civicrm/civicrm.php"
+        civi_version_actuelle=$(grep "define('CIVICRM_PLUGIN_VERSION'" "$version_file" 2>/dev/null | awk -F"'" '{print $4}')
+        label="Wordpress"
+        ;;
+    "drupal10+")
+        # à ajuster si vos modules contrib sont dans web/modules/contrib
+        chemin_plugins="$site_root/web/modules/contrib"
+        version_file="$site_root/vendor/civicrm/civicrm-core/xml/version.xml"
+        civi_version_actuelle=$(grep '<version_no>' "$version_file" 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        label="Drupal 10+"
+        ;;
+    drupal)
+        chemin_plugins="$site_root/sites/all/modules"
+        version_file="$chemin_plugins/civicrm/xml/version.xml"
+        civi_version_actuelle=$(grep '<version_no>' "$version_file" 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        label="Drupal"
+        ;;
+    standalone)
+        chemin_plugins="$site_root"
+        version_file="$chemin_plugins/core/xml/version.xml"
+        civi_version_actuelle=$(grep '<version_no>' "$version_file" 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        label="Standalone"
+        ;;
+    backdrop)
+        chemin_plugins="$site_root/modules"
+        version_file="$chemin_plugins/civicrm/xml/version.xml"
+        civi_version_actuelle=$(grep '<version_no>' "$version_file" 2>/dev/null | awk -F">" '{print $2}' | awk -F"<" '{print $1}')
+        label="Backdrop"
+        ;;
+esac
 
-# Affichage de la version de CiviCRM 
-[ $cms_instance = "wordpress" ] && [ -e $chemin_plugins_wordpress/civicrm/civicrm.php ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_WP}${NC} avec ${PURPLE}Wordpress${NC}"
-[ $cms_instance = "drupal" ] && [ -e $chemin_plugins_drupal/civicrm/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_DRUPAL} avec ${PURPLE}Drupal${NC}"
-[ $cms_instance = "standalone" ] && [ -e $chemin_plugins_standalone/core/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_STANDALONE} en ${PURPLE}Standalone${NC}"
-[ $cms_instance = "backdrop" ] && [ -e  $chemin_plugins_backdrop/civicrm/xml/version.xml ] && echo -e "La version actuelle de CiviCRM est : ${PURPLE}${versionCIVI_BACKDROP} en ${PURPLE}Backdrop${NC}"
+if [[ ! -e "$chemin_plugins" ]]; then
+    echo -e '\e[93m=======================================\033[0m'
+    echo -e "${RED}[ ERREUR ]${NC} Dossier CiviCRM introuvable ($chemin_plugins)"
+    echo -e '\e[93m=======================================\033[0m'
+    exit 1
+fi
 
-echo -e '\e[93m=============================================\033[0m';
+if [[ -e "$version_file" ]]; then
+    echo -e "La version actuelle de CiviCRM est : ${PURPLE}${civi_version_actuelle}${NC} avec ${PURPLE}${label}${NC}"
+fi
 
-# Récuperation de la dernière version de CiviCRM avec une commande Wordpress sur la testwpcivi
+echo -e '\e[93m=============================================\033[0m'
+
+## --- Récupération de la dernière version stable --------------------------
 echo -e "${BLUE}[ INFO ]${NC} récupération de la dernière version stable disponible"
-last_version=$(curl -s https://download.civicrm.org/release/ | sed -n 's|.*<a href="/release/\([^"]*\)">.*|\1|p' | sort -V | tail -n1);
-cd $vhosts;
+last_version=$(curl -s https://download.civicrm.org/release/ | sed -n 's|.*<a href="/release/\([^"]*\)">.*|\1|p' | sort -V | tail -n1)
+cd $vhosts
 
-## Choix version Dernière / Prod personnalisée / Beta / Alpha
-echo "Quelle version souhaitez-vous ?";
-echo -e "Dernière version (d) : ${GREEN}$last_version${NC}";
-echo "Personnalisée (p) ?";
-echo "Beta (b) ?";
-echo "Alpha (a) ?";
+## --- Choix version --------------------------------------------------------
+echo "Quelle version souhaitez-vous ?"
+echo -e "Dernière version (d) : ${GREEN}$last_version${NC}"
+echo "Personnalisée (p) ?"
+echo "Beta (b) ?"
+echo "Alpha (a) ?"
 read civi_type_version
 
+case "$civi_type_version" in
+    "d")
+        civi_version="$last_version"
+        set_maintenance_mode "$instance" "$cms_instance"
 
+        if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
+            updateCivicrm "$civi_folder" "$civi_version"
+        else
+            echo -e '\e[93m=======================================\033[0m'
+            echo -e '\e[93m\033[31m Version inconnue\033[31m'
+            echo -e '\e[93m=======================================\033[0m'
+            exit 1
+        fi
+        ;;
 
-## Choix version
-case $civi_type_version in
-        "d")
-            civi_version="$last_version"
-			set_maintenance_mode $instance $cms_instance
+    "p")
+        echo "Choisissez la version que vous souhaitez installer (X.YY.Z)  ?"
+        read civi_version
+        set_maintenance_mode "$instance" "$cms_instance"
 
-            if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                updateCivicrm $civi_folder $civi_version
-            else
-                echo -e '\e[93m=======================================\033[0m'
-                echo -e '\e[93m\033[31m Version inconnue\033[31m'
-                echo -e '\e[93m=======================================\033[0m'
-                exit 1
-            fi
-            ;;
+        if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
+            updateCivicrm "$civi_folder" "$civi_version"
+        else
+            echo -e '\e[93m=======================================\033[0m'
+            echo -e '\e[93m\033[31m Version inconnue\033[31m'
+            echo -e '\e[93m=======================================\033[0m'
+            exit 1
+        fi
+        ;;
 
-        "p")
-            echo "Choisissez la version que vous souhaitez installer (X.YY.Z)  ?"
-            read civi_version
-           	set_maintenance_mode $instance $cms_instance
+    "b")
+        set_maintenance_mode "$instance" "$cms_instance"
+        updateCivicrm "$civi_folder"
+        ;;
 
-            if [[ $civi_version =~ ^[0-9]*.[0-9]*.[0-9]*$ ]]; then
-                updateCivicrm $civi_folder $civi_version
-            else
-                echo -e '\e[93m=======================================\033[0m'
-                echo -e '\e[93m\033[31m Version inconnue\033[31m'
-                echo -e '\e[93m=======================================\033[0m'
-                exit 1
-            fi
-            ;; 
+    "a")
+        set_maintenance_mode "$instance" "$cms_instance"
+        updateCivicrm "$civi_folder"
+        ;;
 
-        "b")
-            set_maintenance_mode $instance $cms_instance
-		    updateCivicrm $civi_folder 
-            ;;
-
-        "a")
-            set_maintenance_mode $instance $cms_instance
-            updateCivicrm $civi_folder
-            ;;
-
-		*)
-			echo "Choix incorrect"
-			exit 1
-			;;
+    *)
+        echo "Choix incorrect"
+        exit 1
+        ;;
 esac
 
 cd $racine/$civi_folder
-unset_maintenance_mode $instance $cms_instance
+unset_maintenance_mode "$instance" "$cms_instance"
 echo " " ; echo -e ">> Mise à jour de la base de données en cours..."
 yes | cv updb > /dev/null ; cv flush > /dev/null
 echo -e ">> Plesk repair ..." && rep
 
-# Repositionnement dans le httpdocs de l'instance et génération du lien de connexion admin
 cd $racine/$civi_folder
 echo -e ">> Génération du lien de connexion admin..."
 uli admin
