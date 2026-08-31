@@ -177,3 +177,14 @@ uli admin
 
 echo -e "${BLUE}>> Opération terminée 🚀${NC}"
 echo " "
+
+# On écrit le dossier cible dans un fichier temporaire, propre à la session
+# du shell APPELANT (identifié via $PPID = pid du shell parent qui a lancé
+# ce script). La fonction wrapper "up()" du .bashrc lira ce fichier pour
+# faire le "cd" dans le bon shell, puisqu'un "cd" ici ne peut pas persister
+# une fois le script terminé (sous-processus).
+if [[ -d "$vhosts/$civi_folder/httpdocs" ]]; then
+    echo "$vhosts/$civi_folder/httpdocs" > "/tmp/.up_last_dir_${PPID}"
+else
+    echo -e "${RED}[ ATTENTION ]${NC} Dossier httpdocs introuvable pour cette instance ($vhosts/$civi_folder/httpdocs)"
+fi

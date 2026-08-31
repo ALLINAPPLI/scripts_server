@@ -7,6 +7,25 @@
 source $CUSTOM_DIR/includes/functions.sh
 source $CUSTOM_DIR/sources/utils.sh
 
+# Localise le vrai composer.phar (et non un wrapper shell qui pourrait être
+# trouvé par erreur via "command -v composer"). Sous Plesk, le phar officiel
+# est toujours à cet emplacement fixe.
+_civicrmComposerPharPath(){
+    local plesk_phar="/usr/local/psa/var/modules/composer/composer.phar"
+
+    if [[ -f "$plesk_phar" ]]; then
+        echo "$plesk_phar"
+        return
+    fi
+
+    # Repli : si jamais ce n'est pas du Plesk, on cherche un composer.phar
+    # accessible dans le PATH (mais PAS un wrapper shell comme /usr/bin/composer,
+    # qui casserait l'exécution si on l'appelle via "$php_bin $composer_bin")
+    local fallback
+    fallback=$(command -v composer.phar 2>/dev/null)
+    echo "$fallback"
+}
+
 # Détecte si l'installation CiviCRM du site (drupal10+) est pilotée par Composer.
 _civicrmIsComposerManaged(){
     local site_path="$1"
@@ -72,10 +91,10 @@ _updateCivicrmComposer(){
     # On détermine quel binaire PHP utiliser pour que Composer respecte
     # la contrainte "php" déclarée dans le composer.json du site
     php_bin=$(_civicrmComposerPhpBinary "$site_path")
-    composer_bin=$(command -v composer)
+    composer_bin=$(_civicrmComposerPharPath)
 
-    if [[ -z "$composer_bin" ]]; then
-        echo -e "${RED}[ ERREUR ]${NC} Composer introuvable dans le PATH"
+    if [[ -z "$composer_bin" || ! -f "$composer_bin" ]]; then
+        echo -e "${RED}[ ERREUR ]${NC} composer.phar introuvable (ni sous Plesk, ni dans le PATH)"
         exit 1
     fi
 
