@@ -57,6 +57,18 @@ if [[ -z "$cms_instance" ]]; then
     echo -e '\e[93m=======================================\033[0m'
     exit 1
 fi
+# --- Cas Drupal 10+ : mise à jour automatisée désactivée pour le moment ---
+# (installation pilotée par Composer, trop de cas particuliers par site :
+#  contrainte PHP, token GitHub, hooks post-update-cmd tiers, etc.
+#  Voir TODO dans functions_civicrm.sh pour réactiver.)
+if [[ "$cms_instance" == "drupal10+" ]]; then
+    echo -e '\e[93m=======================================\033[0m'
+    echo -e "${PURPLE}[ INFO ]${NC} Ce site utilise Drupal 10+ (installation CiviCRM pilotée par Composer)."
+    echo "La mise à jour automatique via ce script n'est pas activée pour ce cas."
+    echo "Merci de réaliser la montée de version manuellement via Composer."
+    echo -e '\e[93m=======================================\033[0m'
+    exit 0
+fi
 
 ## --- Chemins plugins + version CiviCRM selon le CMS ---------------------
 case "$cms_instance" in
