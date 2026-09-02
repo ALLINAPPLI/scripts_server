@@ -34,15 +34,19 @@ version_compare()
 
 load_users_map()
 {
-    # Une seule requête pour tout le serveur, au lieu d'une par site
-    while IFS=$'\t' read -r dname dlogin; do
-        [ -n "$dname" ] && domain_user_map["$dname"]="$dlogin"
-    done < <(plesk db "select name, login from domains join hosting on domains.id=hosting.dom_id join sys_users on hosting.sys_user_id=sys_users.id" 2> /dev/null | tail -n +2)
+    while IFS='|' read -r _ dname dlogin _; do
+        [[ "$dname" == *---* ]] && continue
+        dname="$(echo "$dname" | xargs)"
+        dlogin="$(echo "$dlogin" | xargs)"
+        [ "$dname" == "name" ] && continue
+        [ -n "$dname" ] && domain_user_map["$dname"]="${dlogin:-N/A}"
+    done < <(plesk db "select d.name, su.login from domains d join hosting h on d.id = h.dom_id join sys_users su on h.sys_user_id = su.id" 2> /dev/null)
 }
 
 process_for_single_site()
 {
 	local user_login="${domain_user_map[$1]:-N/A}"
+    user_login="${user_login:0:34}"
 
 	if [ "$(id -u)" -eq 0 ]; then
 	    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
@@ -61,7 +65,7 @@ process_for_single_site()
     test -e $root_folder/settings.php && local cms="backdrop";
 
     [ -d "$root_folder" ] && cd $root_folder || {
-        printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "--- ndir ---" "---" "$php_version" "$user_login" > "/tmp/vcms_tmp/no_dir-$1"
+        printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} | %-34s |\n" "$1" "--- ndir ---" "---" "$php_version" "$user_login" > "/tmp/vcms_tmp/no_dir-$1"
         return 1;
     }
     local cms_version="";
@@ -83,14 +87,14 @@ process_for_single_site()
       		local cms_version=$(bee status | grep CMS | sed 's|[[:space:]]\+| |g' | cut -d' ' -f4)
       		;;
         *)
-            printf "| %-44s | ${PURPLE}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "Autre CMS" ""  "$php_version" "$user_login" > "/tmp/vcms_tmp/no_cms-$1"
+            printf "| %-44s | ${PURPLE}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} | %-34s |\n" "$1" "Autre CMS" ""  "$php_version" "$user_login" > "/tmp/vcms_tmp/no_cms-$1"
             return 1
             ;;
     esac
 
     local civicrm=$(find . -name "civicrm.settings.php" -print -quit | grep -q . && echo "$GREEN" )
     local tmp_file="/tmp/vcms_tmp/$cms-$1";
-    printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "$cms" "$cms_version"  "$php_version" "$user_login" > "$tmp_file"
+    printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | %-34s |\n" "$1" "$cms" "$cms_version"  "$php_version" "$user_login" > "$tmp_file"
 }
 
 run_processes()
@@ -124,16 +128,26 @@ main()
     [ -d $tmp_folder ] || mkdir "$tmp_folder";
 
     run_processes "$list_site" "${messages[$random_index]}" | pv -i 0.2 -s "$site_count" -p | tee /tmp/debug_vcv > /dev/null
-    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
-    echo "| Instance                                     | CMS          | CMS Version  | PHP     | Utilisateur     |"
-    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
+    echo "+----------------------------------------------+--------------+--------------+---------+------------------------------------+"
+    echo "| Instance                                     | CMS          | CMS Version  | PHP     | Utilisateur                        |"
+    echo "+----------------------------------------------+--------------+--------------+---------+------------------------------------+"
 
     for instance in `ls $tmp_folder`; do
         cat "$tmp_folder/$instance"
     done
-    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
+    echo "+----------------------------------------------+--------------+--------------+---------+------------------------------------+"
     rm /tmp/debug_vcv
     rm -rf $tmp_folder
 }
-
+# if [ "$1" == "--debug-users" ]; then
+#     load_users_map
+#     echo "Nombre d'entrées : ${#domain_user_map[@]}"
+#     printf '%s\n' "${!domain_user_map[@]}" | sort > /tmp/map_keys.txt
+#     get_sites 2> /dev/null | sort > /tmp/get_sites.txt
+#     echo "--- Dans get_sites mais PAS dans la map ---"
+#     comm -23 /tmp/get_sites.txt /tmp/map_keys.txt
+#     echo "--- Dans la map mais PAS dans get_sites ---"
+#     comm -13 /tmp/get_sites.txt /tmp/map_keys.txt
+#     exit 0
+# fi
 main $@
