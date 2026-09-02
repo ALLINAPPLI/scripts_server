@@ -4,6 +4,8 @@
 #
 source "$CUSTOM_DIR/includes/functions.sh";
 
+declare -A domain_user_map=()
+
 version_compare()
 {
     # Séparer les versions en différentes parties (majeur, mineur, etc.)
@@ -30,9 +32,18 @@ version_compare()
     echo $NC  # égales
 }
 
+load_users_map()
+{
+    # Une seule requête pour tout le serveur, au lieu d'une par site
+    while IFS=$'\t' read -r dname dlogin; do
+        [ -n "$dname" ] && domain_user_map["$dname"]="$dlogin"
+    done < <(plesk db "select name, login from domains join hosting on domains.id=hosting.dom_id join sys_users on hosting.sys_user_id=sys_users.id" 2> /dev/null | tail -n +2)
+}
 
 process_for_single_site()
 {
+	local user_login="${domain_user_map[$1]:-N/A}"
+
 	if [ "$(id -u)" -eq 0 ]; then
 	    local php_version=$(plesk bin site --show-php-settings "$1" | grep include_path | grep -oP '(?<=/php/)[0-9]+\.[0-9]+');
     	local php_colors=$(version_compare $php_version $(cat $CUSTOM_DIR/includes//ltst-php-version))
@@ -50,7 +61,7 @@ process_for_single_site()
     test -e $root_folder/settings.php && local cms="backdrop";
 
     [ -d "$root_folder" ] && cd $root_folder || {
-        printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "--- ndir ---" "---" "$php_version" > "/tmp/vcms_tmp/no_dir-$1"
+        printf "| %-44s | %-12s | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "--- ndir ---" "---" "$php_version" "$user_login" > "/tmp/vcms_tmp/no_dir-$1"
         return 1;
     }
     local cms_version="";
@@ -72,14 +83,14 @@ process_for_single_site()
       		local cms_version=$(bee status | grep CMS | sed 's|[[:space:]]\+| |g' | cut -d' ' -f4)
       		;;
         *)
-            printf "| %-44s | ${PURPLE}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} |\n" "$1" "Autre CMS" ""  "$php_version" > "/tmp/vcms_tmp/no_cms-$1"
+            printf "| %-44s | ${PURPLE}%-12s${NC} | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "Autre CMS" ""  "$php_version" "$user_login" > "/tmp/vcms_tmp/no_cms-$1"
             return 1
             ;;
     esac
 
     local civicrm=$(find . -name "civicrm.settings.php" -print -quit | grep -q . && echo "$GREEN" )
     local tmp_file="/tmp/vcms_tmp/$cms-$1";
-    printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | \n" "$1" "$cms" "$cms_version"  "$php_version" > "$tmp_file"
+    printf "| ${civicrm}%-44s${NC} | %-12s | %-12s | ${php_colors}%-7s${NC} | %-15s |\n" "$1" "$cms" "$cms_version"  "$php_version" "$user_login" > "$tmp_file"
 }
 
 run_processes()
@@ -105,20 +116,22 @@ run_processes()
 
 main()
 {
+    [ "$(id -u)" -eq 0 ] && load_users_map
+
     local list_site=$(get_sites)
     local site_count=$(echo "$list_site" | wc -l)
     local tmp_folder="/tmp/vcms_tmp"
     [ -d $tmp_folder ] || mkdir "$tmp_folder";
 
     run_processes "$list_site" "${messages[$random_index]}" | pv -i 0.2 -s "$site_count" -p | tee /tmp/debug_vcv > /dev/null
-    echo "+----------------------------------------------+--------------+--------------+---------+"
-    echo "| Instance                                     | CMS          | CMS Version  | PHP     |"
-    echo "+----------------------------------------------+--------------+--------------+---------+"
+    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
+    echo "| Instance                                     | CMS          | CMS Version  | PHP     | Utilisateur     |"
+    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
 
     for instance in `ls $tmp_folder`; do
         cat "$tmp_folder/$instance"
     done
-    echo "+----------------------------------------------+--------------+--------------+---------+"
+    echo "+----------------------------------------------+--------------+--------------+---------+-----------------+"
     rm /tmp/debug_vcv
     rm -rf $tmp_folder
 }
