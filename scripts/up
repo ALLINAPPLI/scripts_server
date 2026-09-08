@@ -239,8 +239,19 @@ echo " "
 # ce script). La fonction wrapper "up()" du .bashrc lira ce fichier pour
 # faire le "cd" dans le bon shell, puisqu'un "cd" ici ne peut pas persister
 # une fois le script terminé (sous-processus).
-if [[ -d "$vhosts/$civi_folder/httpdocs" ]]; then
-    echo "$vhosts/$civi_folder/httpdocs" > "/tmp/.up_last_dir_${PPID}"
+
+# Vérifier si on est déjà dans un dossier nommé "httpdocs"
+if [[ "${PWD##*/}" == "httpdocs" ]]; then
+    # On est déjà dans httpdocs, on utilise directement $PWD
+    target_dir="$PWD"
 else
-    echo -e "${RED}[ ATTENTION ]${NC} Dossier httpdocs introuvable pour cette instance ($vhosts/$civi_folder/httpdocs)"
+    # On construit le chemin normal
+    target_dir="$vhosts/$civi_folder/httpdocs"
+fi
+
+# Maintenant on vérifie si le dossier existe
+if [[ -d "$target_dir" ]]; then
+    echo "$target_dir" > "/tmp/.up_last_dir_${PPID}"
+else
+    echo -e "${RED}[ ATTENTION ]${NC} Dossier httpdocs introuvable pour cette instance ($target_dir)"
 fi
