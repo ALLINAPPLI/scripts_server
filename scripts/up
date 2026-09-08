@@ -131,6 +131,50 @@ echo "Beta (b) ?"
 echo "Alpha (a) ?"
 read civi_type_version
 
+## --- proposer un backup de bdd  ---
+dump_bin="/etc/my_common/scripts_server/scripts/dump" # chemin en dur, garanti de fonctionner peu importe le $PATH au moment de l'exécution.
+echo -e '\e[93m=============================================\033[0m'
+read -p "Souhaitez-vous faire une sauvegarde de la base de données avant la mise à jour ? (o/N) " do_backup
+do_backup=${do_backup:-N}
+
+if [[ "$do_backup" =~ ^[oOyY]$ ]]; then
+    # vérifie que le fichier existe et est exécutable avant de l'appeler, pour éviter un plantage silencieux ou une erreur Permission denied en pleine mise à jour.
+    ## "$dump_bin" avec guillemets : bonne pratique même si le chemin ne contient pas d'espace ici, pour éviter tout souci si jamais le chemin change plus tard.
+    if [[ ! -x "$dump_bin" ]]; then 
+        echo -e "${RED}[ ERREUR ]${NC} Script de dump introuvable ou non exécutable : $dump_bin"
+        read -p "Voulez-vous continuer la mise à jour SANS backup ? (o/N) " continue_without_backup
+        [[ ! "$continue_without_backup" =~ ^[oOyY]$ ]] && echo "Mise à jour annulée." && exit 1
+    else
+        backup_dir="/var/backups/up"
+        mkdir -p "$backup_dir"
+
+        timestamp=$(date +%Y%m%d_%H%M%S)
+        backup_file="$backup_dir/${instance}_${civi_version_actuelle:-inconnue}_${timestamp}.sql.gz"
+
+        echo -e ">> Sauvegarde de la base de données en cours vers ${GREEN}${backup_file}${NC} ..."
+
+        cd "$vhosts/$civi_folder" || exit 1
+        "$dump_bin" | gzip > "$backup_file"
+        backup_status=$?
+
+        if [[ $backup_status -eq 0 && -s "$backup_file" ]]; then
+            echo -e ">> Sauvegarde effectuée avec succès (${GREEN}$(du -h "$backup_file" | cut -f1)${NC}) : ${PURPLE}${backup_file}${NC}"
+        else
+            echo -e '\e[93m=======================================\033[0m'
+            echo -e "${RED}[ ERREUR ]${NC} La sauvegarde de la base de données a échoué"
+            echo -e '\e[93m=======================================\033[0m'
+            rm -f "$backup_file" 2>/dev/null
+            read -p "Voulez-vous continuer la mise à jour SANS backup ? (o/N) " continue_without_backup
+            [[ ! "$continue_without_backup" =~ ^[oOyY]$ ]] && echo "Mise à jour annulée." && exit 1
+        fi
+        cd "$vhosts"
+    fi
+else
+    echo ">> Sauvegarde ignorée par l'utilisateur."
+fi
+echo -e '\e[93m=============================================\033[0m'
+
+
 case "$civi_type_version" in
     "d")
         civi_version="$last_version"

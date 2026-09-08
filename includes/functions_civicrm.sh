@@ -223,15 +223,15 @@ updateCivicrm(){
     un="1"
 
     # Condition d'existence ou non du plugin CiviCRM dans l'instance choisie
-    [ "$cms_instance" == "wordpress" ] && cd "$chemin_plugins_wordpress" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
-    [ "$cms_instance" == "drupal" ] && cd "$chemin_plugins_drupal" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
-    [ "$cms_instance" == "backdrop" ] && cd "$chemin_plugins_backdrop" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
+    [ "$cms_instance" == "wordpress" ] && cd "$chemin_plugins" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
+    [ "$cms_instance" == "drupal" ] && cd "$chemin_plugins" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
+    [ "$cms_instance" == "backdrop" ] && cd "$chemin_plugins" && [ ! -d "civicrm" ] && echo "Le plugin CiviCRM n'est pas installé, fin du script" && exit 0
 
     # Condition pour se placer dans le bon dossier contenant les plugins, et affectation de valeurs pour toutes les variables
-    [ "$cms_instance" == "wordpress" ] && cd "$chemin_plugins_wordpress" && extension="zip" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
-    [ "$cms_instance" == "drupal" ] && cd "$chemin_plugins_drupal" && extension="tar.gz" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
-    [ "$cms_instance" == "standalone" ] && cd "$chemin_plugins_standalone" && extension="tar.gz" && echo " "
-    [ "$cms_instance" == "backdrop" ] && cd "$chemin_plugins_backdrop" && extension="tar.gz" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
+    [ "$cms_instance" == "wordpress" ] && cd "$chemin_plugins" && extension="zip" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
+    [ "$cms_instance" == "drupal" ] && cd "$chemin_plugins" && extension="tar.gz" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
+    [ "$cms_instance" == "standalone" ] && cd "$chemin_plugins" && extension="tar.gz" && echo " "
+    [ "$cms_instance" == "backdrop" ] && cd "$chemin_plugins" && extension="tar.gz" && [[ -e "$civicrm" && -n "$(ls -A "$civicrm")" ]] && echo " "
 
     case "$civi_type_version" in
         "p"|"d")
@@ -275,20 +275,20 @@ updateCivicrm(){
 
     # Conditions sur le CMS
     if [ "$cms_instance" == "wordpress" ]; then
-        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_wordpress ..."
-        cd "$chemin_plugins_wordpress" && unzip -qq "$civi_download" || unzip -qq "$civi_download.$un"
+        echo ">> Décompression de l'archive dans le dossier $chemin_plugins ..."
+        cd "$chemin_plugins" && unzip -qq "$civi_download" || unzip -qq "$civi_download.$un"
 
     elif [ "$cms_instance" == "drupal" ]; then
-        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_drupal ..."
-        cd "$chemin_plugins_drupal" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
+        echo ">> Décompression de l'archive dans le dossier $chemin_plugins ..."
+        cd "$chemin_plugins" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
 
     elif [ "$cms_instance" == "backdrop" ]; then
-        echo ">> Décompression de l'archive dans le dossier $chemin_plugins_backdrop ..."
-        cd "$chemin_plugins_backdrop" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
+        echo ">> Décompression de l'archive dans le dossier $chemin_plugins ..."
+        cd "$chemin_plugins" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
 
     elif [ "$cms_instance" == "standalone" ]; then
-        echo ">> Décompression de l'archive dans le dossier $vhosts/$civi_folder/httpdocs ..."
-        cd "$chemin_plugins_standalone" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
+        echo ">> Décompression de l'archive dans le dossier $chemin_plugins ..."
+        cd "$chemin_plugins" && tar -xzf "$civi_download" || tar -xzf "$civi_download.$un"
         mv "$vhosts/$civi_folder/civicrm-standalone/core/"* "$vhosts/$civi_folder/core" && rm -rf civicrm-standalone
     else
         echo "Pas de CMS trouvé, fin du script" && exit 0
