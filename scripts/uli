@@ -183,11 +183,11 @@ wp_autologin() {
     die "WP-CLI introuvable. Installez-le : https://wp-cli.org"
   fi
 
-  local WP="$wp_cli --path=$DOCROOT --allow-root"
+  local WP="$wp_cli --path=$DOCROOT --allow-root --skip-plugins --skip-themes"
 
   # URL du site depuis la base WP (source de vérité)
   local SITE_URL
-  SITE_URL=$($WP option get siteurl 2>/dev/null) || die "Impossible de lire siteurl"
+  SITE_URL=$($WP option get siteurl 2>&1) || die "Impossible de lire siteurl : $SITE_URL"
   SITE_URL="${SITE_URL%/}"   # enlève slash final si présent
 
   # Identifie l'utilisateur
