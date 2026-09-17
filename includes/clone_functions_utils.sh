@@ -159,12 +159,24 @@ get_instance_cms ()
             mysql_mdp=$(sed -n "s/^[[:space:]]*'password' => '\([^']*\)',/\1/p" settings.php | head -n 1)
             ;;
         standalone)
-            local line
-            line=$(grep "define('CIVICRM_DSN', 'mysql" civicrm.settings.php | tail -n 1)
-            [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
-                mysql_user="${BASH_REMATCH[1]}" && \
-                mysql_mdp="${BASH_REMATCH[2]}" && \
-                mysql_database="${BASH_REMATCH[4]}"
+             # local line
+            # line=$(grep "define('CIVICRM_DSN', 'mysql" civicrm.settings.php | tail -n 1)
+            # [[ $line =~ mysql://([^:]+):([^@]+)@([^/]+)/([^?]+) ]] && \
+            #     mysql_user="${BASH_REMATCH[1]}" && \
+            #     mysql_mdp="${BASH_REMATCH[2]}" && \
+            #     mysql_database="${BASH_REMATCH[4]}"
+            # ;;
+            local DSN DSN_NOSCHEME
+            DSN=$(grep "CIVICRM_DSN" civicrm.settings.php | grep -v "^\s*\*" | grep -oP "mysql://[^'\"]+" | tail -1 || true)
+            if [[ -n "$DSN" ]]; then
+                DSN_NOSCHEME="${DSN#mysql://}"
+                mysql_user=$(echo "$DSN_NOSCHEME" | cut -d: -f1)
+                mysql_mdp=$(echo "$DSN_NOSCHEME" | cut -d: -f2 | cut -d@ -f1)
+                mysql_host=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f1 | cut -d/ -f1)
+                mysql_port=$(echo "$DSN_NOSCHEME" | cut -d@ -f2 | cut -d: -f2 | cut -d/ -f1)
+                mysql_database=$(echo "$DSN_NOSCHEME" | cut -d/ -f2 | cut -d? -f1)
+                [[ -z "$mysql_port" || ! "$mysql_port" =~ ^[0-9]+$ ]] && mysql_port="3306"
+            fi
             ;;
         backdrop)
             local url
