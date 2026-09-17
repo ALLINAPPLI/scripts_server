@@ -353,7 +353,7 @@ standalone_autologin() {
   # Parse le DSN si le fichier existe
   local DB_USER="" DB_PASS="" DB_HOST="" DB_PORT="" DB_NAME="" USE_MYSQL=0
   if [[ -n "$CIVICRM_SETTINGS_FILE" ]]; then
-    echo "ICI"
+    # echo "ICI"
     info "Settings : ${BOLD}${CIVICRM_SETTINGS_FILE}${RESET}"
 
     local DSN DSN_NOSCHEME
@@ -394,12 +394,29 @@ standalone_autologin() {
   local CV_USERNAME=""
 
   if [[ "$USER_ARG" == "admin" ]]; then
-    CV_USERNAME=$(civicrm_sql "SELECT m.username FROM civicrm_uf_match m
-      INNER JOIN civicrm_user_role ur ON ur.user_id = m.uf_id
-      INNER JOIN civicrm_role r ON r.id = ur.role_id
-      WHERE r.name = 'admin'
-      ORDER BY m.uf_id ASC LIMIT 1;")
-    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur avec le rôle admin trouvé"
+    CV_USERNAME=$(civicrm_sql "
+      SELECT m.username 
+      FROM civicrm_uf_match m
+      WHERE EXISTS (
+        SELECT 1 FROM civicrm_user_role ur
+        INNER JOIN civicrm_role r ON r.id = ur.role_id
+        WHERE ur.user_id = m.uf_id AND r.name = 'admin'
+      )
+      ORDER BY m.uf_id ASC 
+      LIMIT 1;
+    " 2>/dev/null)
+
+    # Fallback : si la requête échoue, essayer sans JOIN sur civicrm_role
+    if [[ -z "$CV_USERNAME" ]]; then
+      CV_USERNAME=$(civicrm_sql "
+        SELECT username FROM civicrm_uf_match 
+        ORDER BY uf_id ASC 
+        LIMIT 1;
+      " 2>/dev/null)
+      [[ -n "$CV_USERNAME" ]] && warn "Aucun rôle 'admin' trouvé → premier utilisateur : ${BOLD}$CV_USERNAME${RESET}"
+    fi
+
+    [[ -z "$CV_USERNAME" ]] && die "Aucun utilisateur trouvé dans civicrm_uf_match"
     info "Premier admin trouvé : ${BOLD}$CV_USERNAME${RESET}"
 
   elif [[ "$USER_ARG" =~ ^[0-9]+$ ]]; then
