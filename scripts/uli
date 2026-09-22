@@ -221,11 +221,20 @@ wp_autologin() {
 cat > "$MU_FILE" <<'PHPEOF'
 <?php
 /**
- * uli — handler de connexion automatique (mu-plugin)
- * Écoute ?uli_k=KEY&uli_t=TOKEN sur une requête WP normale
- * (index.php), donc jamais bloqué par une règle nginx qui
- * interdirait l'exécution de PHP dans wp-content/uploads/.
- * Token à usage unique, stocké dans wp_options le temps du login.
+ * uli — handler de connexion automatique
+ *
+ * Utilisation :
+ * https://example.com/?uli_k=KEY&uli_t=TOKEN
+ *
+ * Les tokens sont :
+ * - à usage unique ;
+ * - valides pendant cinq minutes ;
+ * - supprimés après utilisation ;
+ * - nettoyés périodiquement s'ils expirent sans avoir été utilisés.
+ */
+
+/*
+ * Connexion automatique avec un token.
  */
 add_action('init', function () {
     if (!isset($_GET['uli_k'], $_GET['uli_t'])) {
@@ -233,47 +242,91 @@ add_action('init', function () {
     }
 
     $key = preg_replace('/[^a-f0-9]/', '', (string) $_GET['uli_k']);
+
     if ($key === '') {
-        return;
+        status_header(403);
+        exit('Clé invalide');
     }
 
     $option_key = 'uli_' . $key;
-    $stored     = get_option($option_key);
+    $stored = get_option($option_key);
 
     if (!$stored) {
         status_header(403);
-        die('Token expiré ou invalide');
+        exit('Token expiré ou invalide');
     }
 
-    // Supprime immédiatement : usage unique, même si la suite échoue
+    /*
+     * Suppression immédiate : le token est à usage unique,
+     * même si une étape ultérieure échoue.
+     */
     delete_option($option_key);
 
-    list($login, $token, $expire) = array_pad(explode('|', $stored), 3, '');
+    $parts = array_pad(explode('|', $stored, 3), 3, '');
+    [$login, $token, $expire] = $parts;
 
     if (!hash_equals((string) $token, (string) $_GET['uli_t'])) {
         status_header(403);
-        die('Token invalide');
+        exit('Token invalide');
     }
 
     if (time() > (int) $expire) {
         status_header(403);
-        die('Token expiré');
+        exit('Token expiré');
     }
 
     $user = get_user_by('login', $login);
+
     if (!$user) {
         status_header(404);
-        die('Utilisateur introuvable');
+        exit('Utilisateur introuvable');
     }
 
     wp_set_auth_cookie($user->ID, false);
     wp_safe_redirect(admin_url());
     exit;
 });
+
+
+/*
+ * Nettoyage périodique des tokens expirés.
+ *
+ * Le nettoyage est exécuté au maximum une fois par heure,
+ * lorsqu'une requête WordPress passe par ce mu-plugin.
+ */
+add_action('init', function () {
+    global $wpdb;
+
+    $last_cleanup = (int) get_option('uli_last_cleanup', 0);
+
+    if (time() - $last_cleanup < HOUR_IN_SECONDS) {
+        return;
+    }
+
+    $now = time();
+
+    /*
+     * Les options ont la forme :
+     * uli_<clé> = login|token|timestamp_expiration
+     */
+    $wpdb->query(
+        $wpdb->prepare(
+            "DELETE FROM {$wpdb->options}
+             WHERE option_name LIKE %s
+             AND option_name <> 'uli_last_cleanup'
+             AND CAST(SUBSTRING_INDEX(option_value, '|', -1) AS UNSIGNED) < %d",
+            $wpdb->esc_like('uli_') . '%',
+            $now
+        )
+    );
+
+    update_option('uli_last_cleanup', $now, false);
+});
 PHPEOF
+
     chmod 644 "$MU_FILE"
     info "Handler mu-plugin installé : ${BOLD}wp-content/mu-plugins/uli-autologin.php${RESET}"
-  fi
+fi
 
   # Génère le token (usage unique, 5 minutes)
   local KEY TOKEN
