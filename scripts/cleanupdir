@@ -156,17 +156,28 @@ else
     echo "[$TIMESTAMP] Nettoyage récursif de '$DOSSIER' (fichiers > $DUREE, soit $MINUTES min, toutes extensions)" >> "$LOGFILE"
 fi
  
-if [[ "$DRY_RUN" == "1" ]]; then
-    # Simulation : liste tous les fichiers concernés
-    find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
-else
-    # Suppression réelle des fichiers, récursive
-    find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
+# if [[ "$DRY_RUN" == "1" ]]; then
+#     # Simulation : liste tous les fichiers concernés
+#     find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
+# else
+#     # Suppression réelle des fichiers, récursive
+#     find "$DOSSIER" -type f "${FIND_EXT_ARGS[@]}" -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
  
-    # Suppression optionnelle des dossiers vides restants
+#     # Suppression optionnelle des dossiers vides restants
+#     if [[ "$DELETE_EMPTY" == "1" ]]; then
+#         find "$DOSSIER" -mindepth 1 -type d -empty -print -delete >> "$LOGFILE" 2>&1
+#     fi
+# fi
+ 
+if [[ "$DRY_RUN" == "1" ]]; then
+    find "$DOSSIER" -type f ${FIND_EXT_ARGS[@]+"${FIND_EXT_ARGS[@]}"} -mmin +"$MINUTES" -print | tee -a "$LOGFILE"
+else
+    find "$DOSSIER" -type f ${FIND_EXT_ARGS[@]+"${FIND_EXT_ARGS[@]}"} -mmin +"$MINUTES" -print -delete >> "$LOGFILE" 2>&1
+
     if [[ "$DELETE_EMPTY" == "1" ]]; then
         find "$DOSSIER" -mindepth 1 -type d -empty -print -delete >> "$LOGFILE" 2>&1
     fi
 fi
- 
+
+
 echo "[$TIMESTAMP] Nettoyage terminé." >> "$LOGFILE"
